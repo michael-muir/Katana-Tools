@@ -64,7 +64,6 @@ accumulateBounds(startLocation)
 -- If bounds were found, set them
 if minX < math.huge then
     boundsAttr = Interface.SetAttr("bound", FloatAttribute({minX, maxX, minY, maxY, minZ, maxZ}, 6))
-    print("BOUNDSATTR", boundsAttr)
     --print(string.format(
     --    "Computed Component Bounds: (%.3f, %.3f, %.3f) to (%.3f, %.3f, %.3f)",
     --    minX, minY, minZ, maxX, maxY, maxZ
