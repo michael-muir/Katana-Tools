@@ -22,8 +22,8 @@ function accumulateBounds(location)
         if bounds[3] < minY then minY = bounds[3] end
         if bounds[5] < minZ then minZ = bounds[5] end
         if bounds[2] > maxX then maxX = bounds[2] end
-        if bounds[4] < maxY then maxY = bounds[4] end
-        if bounds[6] < maxZ then maxZ = bounds[6] end
+        if bounds[4] > maxY then maxY = bounds[4] end
+        if bounds[6] > maxZ then maxZ = bounds[6] end
     else
         local pointAttr = Interface.GetAttr("geometry.point.P", location)
         if pointAttr ~= nil then
