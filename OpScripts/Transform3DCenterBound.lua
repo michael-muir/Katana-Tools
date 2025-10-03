@@ -12,21 +12,33 @@ version 1.0.0
 
 ]]
 
-
 function accumulateBounds(location)
-    --[[ Recursibly compute bounds from all descendent geometry]]
-    local pointAttr = Interface.GetAttr("geometry.point.P", location)
-    if pointAttr ~= nil then
-        local positions = pointAttr:getNearestSample(0)
-        local count = #positions
-        for i = 1, count, 3 do
-            local x, y, z = positions[i], positions[i+1], positions[i+2]
-            if x < minX then minX = x end
-            if y < minY then minY = y end
-            if z < minZ then minZ = z end
-            if x > maxX then maxX = x end
-            if y > maxY then maxY = y end
-            if z > maxZ then maxZ = z end
+    --[[  Recursively accumlate bounds from all descendant geometry.
+         Calculate bounds no bounds are found.
+    ]]
+    local boundAttr = Interface.GetAttr("bound", location)
+    if boundAttr then
+        local bounds = boundAttr:getNearestSample(Interface.GetCurrentTime())
+        if bounds[1] < minX then minX = bounds[1] end
+        if bounds[3] < minY then minY = bounds[3] end
+        if bounds[5] < minZ then minZ = bounds[5] end
+        if bounds[2] > maxX then maxX = bounds[2] end
+        if bounds[4] < maxY then maxY = bounds[4] end
+        if bounds[6] < maxZ then maxZ = bounds[6] end
+    else
+        local pointAttr = Interface.GetAttr("geometry.point.P", location)
+        if pointAttr ~= nil then
+            local positions = pointAttr:getNearestSample(0)
+            local count = #positions
+            for i = 1, count, 3 do
+                local x, y, z = positions[i], positions[i+1], positions[i+2]
+                if x < minX then minX = x end
+                if y < minY then minY = y end
+                if z < minZ then minZ = z end
+                if x > maxX then maxX = x end
+                if y > maxY then maxY = y end
+                if z > maxZ then maxZ = z end
+            end
         end
     end
 
@@ -43,7 +55,7 @@ end
 
 local time = Interface.GetCurrentTime()
 
--- Translate, Rotate and Scale are user parameters of type Number Array ( size 3 )
+-- the following 3 items are user parameters of type Number Array ( size 3 )
 local translate = Interface.GetOpArg('user.translate'):getNearestSample(time)
 local rotate = Interface.GetOpArg('user.rotate'):getNearestSample(time)
 local scale = Interface.GetOpArg('user.scale'):getNearestSample(time)
