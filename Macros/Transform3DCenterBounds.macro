@@ -1,0 +1,66 @@
+<katana release="6.5v6" version="6.0.1.000004">
+  <node name="__SAVE_exportedNodes" type="Group">
+    <node baseType="Group" edited="true" eyepointx="539.848" eyepointy="-833.01" eyepointz="0.0" name="Transform3DCenterBounds" ns_basicDisplay="1" ns_bubbleZoom="0.0" ns_errorGlow="0.0" ns_fromContext="legacy" ns_iconName="" selected="true" type="Group" viewscalex="1.20249" viewscaley="1.20249" viewscalez="1.0" x="490.319" y="-788.396">
+      <port name="i0" source="Transform3D6.out" type="in"/>
+      <port name="o0" type="out"/>
+      <group_parameter name="Transform3DCenterBounds">
+        <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;}" name="user">
+          <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;}" name="CEL" value=""/>
+          <numberarray_parameter name="translate" size="3" tupleSize="1">
+            <number_parameter name="i0" value="0"/>
+            <number_parameter name="i1" value="0"/>
+            <number_parameter name="i2" value="0"/>
+          </numberarray_parameter>
+          <numberarray_parameter name="rotate" size="3" tupleSize="1">
+            <number_parameter name="i0" value="0"/>
+            <number_parameter name="i1" value="0"/>
+            <number_parameter name="i2" value="0"/>
+          </numberarray_parameter>
+          <numberarray_parameter name="scale" size="3" tupleSize="1">
+            <number_parameter name="i0" value="1"/>
+            <number_parameter name="i1" value="1"/>
+            <number_parameter name="i2" value="1"/>
+          </numberarray_parameter>
+        </group_parameter>
+      </group_parameter>
+      <node baseType="OpScript" name="OpScript_Transform3DCenterBound" ns_errorGlow="0.0" type="OpScript" viewed="true" x="490.319" y="-788.396">
+        <port name="i0" source="Transform3DCenterBounds.i0" type="in"/>
+        <port name="out" returns="o0" type="out"/>
+        <group_parameter name="OpScript_Transform3DCenterBound">
+          <string_parameter expression="=^/user.CEL" name="CEL"/>
+          <string_parameter name="location" value="/root/world/location"/>
+          <group_parameter name="script">
+            <string_parameter name="lua" value="--[[&#0010;NAME: Transform About Center Bounds of Objects&#0010;SCOPE: Transform3D&#0010;&#0010;Laika Studios LLC&#0010;(c) Laika Studios LLC 2025&#0010;&#0010;date: 10/02/2025&#0010;&#0010;Author: Michael Muir&#0010;e-mail: mmuir@laika.com&#0010;version 1.0.0&#0010;&#0010;]]&#0010;&#0010;&#0010;function accumulateBounds(location)&#0010;    --[[  Recursively accumlate bounds from all descendant geometry.&#0010;         Calculate bounds no bounds are found.&#0010;    ]]&#0010;    local boundAttr = Interface.GetAttr(&quot;bound&quot;, location)&#0010;    if boundAttr then&#0010;        local bounds = boundAttr:getNearestSample(Interface.GetCurrentTime())&#0010;        if bounds[1] &lt; minX then minX = bounds[1] end&#0010;        if bounds[3] &lt; minY then minY = bounds[3] end&#0010;        if bounds[5] &lt; minZ then minZ = bounds[5] end&#0010;        if bounds[2] &gt; maxX then maxX = bounds[2] end&#0010;        if bounds[4] &gt; maxY then maxY = bounds[4] end&#0010;        if bounds[6] &gt; maxZ then maxZ = bounds[6] end&#0010;    else&#0010;        local pointAttr = Interface.GetAttr(&quot;geometry.point.P&quot;, location)&#0010;        if pointAttr ~= nil then&#0010;            local positions = pointAttr:getNearestSample(0)&#0010;            local count = #positions&#0010;            for i = 1, count, 3 do&#0010;                local x, y, z = positions[i], positions[i+1], positions[i+2]&#0010;                if x &lt; minX then minX = x end&#0010;                if y &lt; minY then minY = y end&#0010;                if z &lt; minZ then minZ = z end&#0010;                if x &gt; maxX then maxX = x end&#0010;                if y &gt; maxY then maxY = y end&#0010;                if z &gt; maxZ then maxZ = z end&#0010;            end&#0010;        end&#0010;    end&#0010;&#0010;    -- Recurse into children&#0010;    local children = Interface.GetPotentialChildren(location)&#0010;    for _, child in ipairs(children:getNearestSample(0)) do&#0010;        accumulateBounds(location .. &quot;/&quot; .. child)&#0010;    end&#0010;end&#0010;&#0010;----------&#0010;-- Main --&#0010;----------&#0010;&#0010;local time = Interface.GetCurrentTime()&#0010;&#0010;-- the following 3 items are user parameters of type Number Array ( size 3 )&#0010;local translate = Interface.GetOpArg(&apos;user.translate&apos;):getNearestSample(time)&#0010;local rotate = Interface.GetOpArg(&apos;user.rotate&apos;):getNearestSample(time)&#0010;local scale = Interface.GetOpArg(&apos;user.scale&apos;):getNearestSample(time)&#0010;&#0010;-- get bounds&#0010;local boundAttr = Interface.GetAttr(&quot;bound&quot;)&#0010;if not boundAttr then&#0010;    -- Initialize bounds to extreme values&#0010;    minX, minY, minZ = math.huge, math.huge, math.huge&#0010;    maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge&#0010;&#0010;    -- Walk and accumulate bounds from all descendants geometry&#0010;    accumulateBounds(Interface.GetInputLocationPath())&#0010;&#0010;    -- If bounds were found, set them&#0010;    if minX &lt; math.huge then&#0010;        bounds = {minX, maxX, minY, maxY, minZ, maxZ}&#0010;        Interface.SetAttr(&quot;bound&quot;, FloatAttribute(bounds, 6))&#0010;    else&#0010;        print(&quot;No point data found under to calculate bounds&quot;, startLocation)&#0010;        return&#0010;    end&#0010;else&#0010;    bounds = boundAttr:getNearestSample(time)&#0010;end&#0010;&#0010;-- Compute center&#0010;local xmin, xmax, ymin, ymax, zmin, zmax = unpack(bounds)&#0010;cx = 0.5 * (xmin + xmax)&#0010;cy = 0.5 * (ymin + ymax)&#0010;cz = 0.5 * (zmin + zmax)&#0010;Interface.SetAttr(&quot;center&quot;, DoubleAttribute({cx, cy, cz}))&#0010;&#0010;-- rebuild xform&#0010;local gb = GroupBuilder()&#0010;local currentXform = Interface.GetAttr(&quot;xform&quot;)&#0010;if currentXform then&#0010;    gb:update(currentXform)&#0010;end&#0010;&#0010;-- set transform 3D attributes&#0010;gb:set(&quot;locationPath&quot;, StringAttribute(Interface.GetInputLocationPath()))&#0010;gb:set(&quot;pivot&quot;, DoubleAttribute({cx, cy, cz}))&#0010;gb:set(&quot;makeInteractive&quot;, IntAttribute(1))&#0010;gb:set(&quot;applyFirst&quot;, IntAttribute(1))&#0010;&#0010;-- xform group&#0010;local xform = GroupBuilder()&#0010;xform:set(&quot;translate&quot;, DoubleAttribute(translate))&#0010;xform:set(&quot;rotateZ&quot;, DoubleAttribute({rotate[3], 0.0, 0.0, 1.0}))&#0010;xform:set(&quot;rotateY&quot;, DoubleAttribute({rotate[2], 0.0, 1.0, 0.0}))&#0010;xform:set(&quot;rotateX&quot;, DoubleAttribute({rotate[1], 0.0, 1.0, 0.0}))&#0010;xform:set(&quot;scale&quot;, DoubleAttribute(scale))&#0010;gb:set(&quot;xform&quot;, xform:build())&#0010;&#0010;-- update xform&#0010;Interface.ExecOp(&quot;Transform&quot;, gb:build())&#0010;"/>
+          </group_parameter>
+          <string_parameter name="executionMode" value="immediate"/>
+          <string_parameter name="applyWhere" value="at locations matching CEL"/>
+          <string_parameter name="applyWhen" value="during op resolve"/>
+          <string_parameter name="modifierNameMode" value="node name"/>
+          <string_parameter name="modifierName" value="modifier"/>
+          <string_parameter name="resolveIds" value=""/>
+          <number_parameter name="recursiveEnable" value="0"/>
+          <string_parameter name="disableAt" value=""/>
+          <string_parameter name="inputBehavior" value="by index"/>
+          <number_parameter name="multisampleUserOpArgs" value="1"/>
+          <group_parameter hints="{&apos;widget&apos;: &apos;userParamsEditor&apos;}" name="user">
+            <numberarray_parameter name="translate" size="3" tupleSize="1">
+              <number_parameter expression="=^/user.translate.i0" isexpression="true" name="i0"/>
+              <number_parameter expression="=^/user.translate.i1" isexpression="true" name="i1"/>
+              <number_parameter expression="=^/user.translate.i2" isexpression="true" name="i2"/>
+            </numberarray_parameter>
+            <numberarray_parameter name="rotate" size="3" tupleSize="1">
+              <number_parameter expression="=^/user.rotate.i0" isexpression="true" name="i0"/>
+              <number_parameter expression="=^/user.rotate.i1" isexpression="true" name="i1"/>
+              <number_parameter expression="=^/user.rotate.i2" isexpression="true" name="i2"/>
+            </numberarray_parameter>
+            <numberarray_parameter name="scale" size="3" tupleSize="1">
+              <number_parameter expression="=^/user.scale.i0" isexpression="true" name="i0"/>
+              <number_parameter expression="=^/user.scale.i1" isexpression="true" name="i1"/>
+              <number_parameter expression="=^/user.scale.i2" isexpression="true" name="i2"/>
+            </numberarray_parameter>
+          </group_parameter>
+        </group_parameter>
+      </node>
+    </node>
+  </node>
+</katana>
