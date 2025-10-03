@@ -2,7 +2,6 @@
 NAME: Transform3DCenterBound
 SCOPE: Transform3D
 
-Michael Muir
 (c) Michael Muir 2025
 
 date: 10/02/2025
