@@ -58,6 +58,11 @@ local time = Interface.GetCurrentTime()
 local translate = Interface.GetOpArg('user.translate'):getNearestSample(time)
 local rotate = Interface.GetOpArg('user.rotate'):getNearestSample(time)
 local scale = Interface.GetOpArg('user.scale'):getNearestSample(time)
+-- additional user parameters
+local stackOrder = Interface.GetOpArg("user.stackOrder"):getValue()
+local uniformScale = Interface.GetOpArg("user.uniformScale"):getValue()
+local makeInteractive = Interface.GetOpArg("user.makeInteractive"):getValue()
+local adjustParentBounds = Interface.GetOpArg("user.adjustParentBounds"):getValue()
 
 -- get bounds
 local boundAttr = Interface.GetAttr("bound")
@@ -86,7 +91,6 @@ local xmin, xmax, ymin, ymax, zmin, zmax = unpack(bounds)
 cx = 0.5 * (xmin + xmax)
 cy = 0.5 * (ymin + ymax)
 cz = 0.5 * (zmin + zmax)
-Interface.SetAttr("center", DoubleAttribute({cx, cy, cz}))
 
 -- rebuild xform
 local gb = GroupBuilder()
@@ -98,8 +102,9 @@ end
 -- set transform 3D attributes
 gb:set("locationPath", StringAttribute(Interface.GetInputLocationPath()))
 gb:set("pivot", DoubleAttribute({cx, cy, cz}))
-gb:set("makeInteractive", IntAttribute(1))
-gb:set("applyFirst", IntAttribute(1))
+gb:set("makeInteractive", IntAttribute(makeInteractive))
+gb:set("applyFirst", IntAttribute(stackOrder))
+gb:set("adjustParentBounds", IntAttribute(adjustParentBounds))
 
 -- xform group
 local xform = GroupBuilder()
@@ -108,7 +113,18 @@ xform:set("rotateZ", DoubleAttribute({rotate[3], 0.0, 0.0, 1.0}))
 xform:set("rotateY", DoubleAttribute({rotate[2], 0.0, 1.0, 0.0}))
 xform:set("rotateX", DoubleAttribute({rotate[1], 0.0, 1.0, 0.0}))
 xform:set("scale", DoubleAttribute(scale))
-gb:set("xform", xform:build())
+if uniformScale ~= 1.0 then
+    xform:set("scale1", DoubleAttribute({uniformScale, uniformScale, uniformScale}))
+end
 
--- update xform
-Interface.ExecOp("Transform", gb:build())
+-- build transformation
+gb:set("xform", xform:build())
+gbAttr = gb:build()
+Interface.ExecOp("Transform", gbAttr)
+
+
+-- update bounds
+transformedBoundsAttr = XFormUtils.CalcTransformedBoundsAtExistingTimes(gbAttr, boundAttr)
+if transformedBoundsAttr then
+    Interface.SetAttr("bound", transformedBoundsAttr)
+end
