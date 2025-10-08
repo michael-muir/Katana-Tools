@@ -122,10 +122,3 @@ gb:set("xform", xform:build())
 gbAttr = gb:build()
 Interface.ExecOp("Transform", gbAttr)
 
-
--- update bounds
-transformedBoundsAttr = XFormUtils.CalcTransformedBoundsAtExistingTimes(gbAttr, boundAttr)
-if transformedBoundsAttr then
-    -- force proper formatting in Katana
-    Interface.SetAttr("bound", DoubleAttribute(transformedBoundsAttr:getNearestSample(time), 6))
-end
