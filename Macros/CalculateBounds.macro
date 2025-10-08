@@ -1,0 +1,34 @@
+<katana release="6.5v6" version="6.0.1.000004">
+  <node name="__SAVE_exportedNodes" type="Group">
+    <node baseType="Group" edited="true" eyepointx="7562.23" eyepointy="-2208.47" eyepointz="0.0" name="CalculateBounds" ns_basicDisplay="1" ns_fromContext="legacy" ns_iconName="" selected="true" type="Group" viewscalex="2.7138" viewscaley="2.7138" viewscalez="1.0" x="7600.53" y="-2187.47">
+      <port name="i0" source="Dot43.output" type="in"/>
+      <port name="o0" type="out"/>
+      <group_parameter name="CalculateBounds">
+        <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;, &apos;widget&apos;: &apos;userParamsEditor&apos;}" name="user">
+          <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;}" name="CEL" value=""/>
+        </group_parameter>
+      </group_parameter>
+      <node baseType="OpScript" name="OpScript_CalculateBounds" ns_errorGlow="0.0" ns_fromContext="legacy" type="OpScript" x="7562.23" y="-2208.47">
+        <port name="i0" source="CalculateBounds.i0" type="in"/>
+        <port name="out" returns="o0" type="out"/>
+        <group_parameter name="OpScript_CalculateBounds">
+          <string_parameter expression="=^/user.CEL" name="CEL"/>
+          <string_parameter name="location" value="/root/world/location"/>
+          <group_parameter name="script">
+            <string_parameter name="lua" value="-- Recursively compute bounds from all descendant geometry&#0010;function accumulateBounds(location)&#0010;    --[[  Recursively accumlate bounds from all descendant geometry.&#0010;         Calculate bounds no bounds are found.&#0010;    ]]&#0010;    local boundAttr = Interface.GetAttr(&quot;bound&quot;, location)&#0010;    if boundAttr then&#0010;        local bounds = boundAttr:getNearestSample(Interface.GetCurrentTime())&#0010;        if bounds[1] &lt; minX then minX = bounds[1] end&#0010;        if bounds[3] &lt; minY then minY = bounds[3] end&#0010;        if bounds[5] &lt; minZ then minZ = bounds[5] end&#0010;        if bounds[2] &gt; maxX then maxX = bounds[2] end&#0010;        if bounds[4] &lt; maxY then maxY = bounds[4] end&#0010;        if bounds[6] &lt; maxZ then maxZ = bounds[6] end&#0010;    else&#0010;        local pointAttr = Interface.GetAttr(&quot;geometry.point.P&quot;, location)&#0010;        if pointAttr ~= nil then&#0010;            local positions = pointAttr:getNearestSample(0)&#0010;            local count = #positions&#0010;            for i = 1, count, 3 do&#0010;                local x, y, z = positions[i], positions[i+1], positions[i+2]&#0010;                if x &lt; minX then minX = x end&#0010;                if y &lt; minY then minY = y end&#0010;                if z &lt; minZ then minZ = z end&#0010;                if x &gt; maxX then maxX = x end&#0010;                if y &gt; maxY then maxY = y end&#0010;                if z &gt; maxZ then maxZ = z end&#0010;            end&#0010;        end&#0010;    end&#0010;&#0010;    -- Recurse into children&#0010;    local children = Interface.GetPotentialChildren(location)&#0010;    for _, child in ipairs(children:getNearestSample(0)) do&#0010;        accumulateBounds(location .. &quot;/&quot; .. child)&#0010;    end&#0010;end&#0010;&#0010;&#0010;&#0010;-- Starting at the current location&#0010;local startLocation = Interface.GetInputLocationPath()&#0010;&#0010;-- Initialize bounds to extreme values&#0010;minX, minY, minZ = math.huge, math.huge, math.huge&#0010;maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge&#0010;&#0010;-- Walk and accumulate bounds from all descendants&#0010;accumulateBounds(startLocation)&#0010;&#0010;-- If bounds were found, set them&#0010;if minX &lt; math.huge then&#0010;    boundsAttr = Interface.SetAttr(&quot;bound&quot;, FloatAttribute({minX, maxX, minY, maxY, minZ, maxZ}, 6))&#0010;    print(&quot;BOUNDSATTR&quot;, boundsAttr)&#0010;    --print(string.format(&#0010;    --    &quot;Computed Component Bounds: (%.3f, %.3f, %.3f) to (%.3f, %.3f, %.3f)&quot;,&#0010;    --    minX, minY, minZ, maxX, maxY, maxZ&#0010;    --))&#0010;else&#0010;    print(&quot;No point data found under&quot;, startLocation)&#0010;end&#0010;"/>
+          </group_parameter>
+          <string_parameter name="executionMode" value="immediate"/>
+          <string_parameter name="applyWhere" value="at locations matching CEL"/>
+          <string_parameter name="applyWhen" value="during op resolve"/>
+          <string_parameter name="modifierNameMode" value="node name"/>
+          <string_parameter name="modifierName" value="modifier"/>
+          <string_parameter name="resolveIds" value=""/>
+          <number_parameter name="recursiveEnable" value="0"/>
+          <string_parameter name="disableAt" value=""/>
+          <string_parameter name="inputBehavior" value="by index"/>
+          <number_parameter name="multisampleUserOpArgs" value="1"/>
+        </group_parameter>
+      </node>
+    </node>
+  </node>
+</katana>
