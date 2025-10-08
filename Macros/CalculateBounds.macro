@@ -4,7 +4,7 @@
       <port name="i0" source="Dot43.output" type="in"/>
       <port name="o0" type="out"/>
       <group_parameter name="CalculateBounds">
-        <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;, &apos;widget&apos;: &apos;userParamsEditor&apos;}" name="user">
+        <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;}" name="user">
           <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;}" name="CEL" value=""/>
         </group_parameter>
       </group_parameter>
