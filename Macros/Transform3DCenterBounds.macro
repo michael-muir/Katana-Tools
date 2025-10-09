@@ -26,15 +26,6 @@
           <number_parameter hints="{&apos;widget&apos;: &apos;mapper&apos;, &apos;options&apos;: {&apos;No&apos;: 0.0, &apos;Yes&apos;: 1.0}, &apos;options__order&apos;: [&apos;No&apos;, &apos;Yes&apos;]}" name="makeInteractive" value="0"/>
           <number_parameter hints="{&apos;widget&apos;: &apos;mapper&apos;, &apos;options&apos;: {&apos;No&apos;: 0.0, &apos;Yes&apos;: 1.0}, &apos;options__order&apos;: [&apos;No&apos;, &apos;Yes&apos;]}" name="adjustParentBounds" value="1"/>
         </group_parameter>
-        <group_parameter name="Laika_Publish">
-          <string_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="name" value="Transform3DCenterBounds"/>
-          <number_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="version" value="1"/>
-          <string_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="shop" value="surfacing"/>
-          <string_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="notes" value=""/>
-          <string_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="author" value="Michael Muir"/>
-          <string_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="date" value="2025-10-03 19:13:31"/>
-          <number_parameter hints="{&apos;readOnly&apos;: &apos;True&apos;}" name="id" value="4812720"/>
-        </group_parameter>
       </group_parameter>
       <node baseType="OpScript" name="OpScript_Transform3DCenterBound" ns_errorGlow="0.0" type="OpScript" x="490.319" y="-788.396">
         <port name="i0" source="Transform3DCenterBounds.i0" type="in"/>
