@@ -1,0 +1,64 @@
+<katana release="6.5v6" version="6.0.1.000004">
+  <node name="__SAVE_exportedNodes" type="Group">
+    <node baseType="Group" edited="true" eyepointx="53.0" eyepointy="-44.0" eyepointz="10000.0" name="AttributeMath" ns_basicDisplay="1.0" ns_bubbleZoom="0.0" ns_errorGlow="0.0" ns_fromContext="legacy" ns_iconName="" ns_offsetX="99.0" ns_offsetY="36.0" selected="true" type="Group" viewscalex="1.0" viewscaley="1.0" viewscalez="1.0" x="6136.18" y="-7893.17">
+      <port name="i0" type="in"/>
+      <port name="o0" type="out"/>
+      <group_parameter name="AttributeMath">
+        <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;}" name="user">
+          <number_parameter hints="{&apos;widget&apos;: &apos;mapper&apos;, &apos;options&apos;: {&apos;path&apos;: 0.0, &apos;CEL&apos;: 1.0}, &apos;options__order&apos;: [&apos;path&apos;, &apos;CEL&apos;]}" name="mode" value="1"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;, &apos;conditionalVisOps&apos;: {&apos;conditionalVisOp&apos;: &apos;equalTo&apos;, &apos;conditionalVisValue&apos;: &apos;1.0&apos;, &apos;conditionalVisPath&apos;: &apos;../mode&apos;}}" name="CEL" value=""/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;scenegraphLocation&apos;, &apos;conditionalVisOps&apos;: {&apos;conditionalVisOp&apos;: &apos;equalTo&apos;, &apos;conditionalVisValue&apos;: &apos;0&apos;, &apos;conditionalVisPath&apos;: &apos;../mode&apos;}}" name="path" value=""/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;separator&apos;, &apos;minimal&apos;: &apos;True&apos;, &apos;disableWidgetTypeSelection&apos;: &apos;True&apos;, &apos;panelArgs&apos;: {&apos;disableFrame&apos;: &apos;True&apos;, &apos;disableTypeLabel&apos;: &apos;True&apos;}}" name="" value=""/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;attributeName&apos;}" name="numberAttributeName" value="Drop Attributes Here"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;popup&apos;, &apos;options&apos;: [&apos;float&apos;, &apos;color&apos;]}" name="numberAttributeType" value="float"/>
+          <number_parameter hints="{&apos;conditionalVisOps&apos;: {&apos;conditionalVisOp&apos;: &apos;equalTo&apos;, &apos;conditionalVisValue&apos;: &apos;float&apos;, &apos;conditionalVisPath&apos;: &apos;../numberAttributeType&apos;}}" name="floatValue" value="1"/>
+          <numberarray_parameter hints="{&apos;widget&apos;: &apos;color&apos;, &apos;conditionalVisOps&apos;: {&apos;conditionalVisOp&apos;: &apos;equalTo&apos;, &apos;conditionalVisValue&apos;: &apos;color&apos;, &apos;conditionalVisPath&apos;: &apos;../numberAttributeType&apos;}}" name="colorValue" size="3" tupleSize="3">
+            <number_parameter name="i0" value="1"/>
+            <number_parameter name="i1" value="1"/>
+            <number_parameter name="i2" value="1"/>
+          </numberarray_parameter>
+          <string_parameter hints="{&apos;widget&apos;: &apos;separator&apos;, &apos;minimal&apos;: &apos;True&apos;, &apos;disableWidgetTypeSelection&apos;: &apos;True&apos;, &apos;panelArgs&apos;: {&apos;disableFrame&apos;: &apos;True&apos;, &apos;disableTypeLabel&apos;: &apos;True&apos;}}" name="" value=""/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;popup&apos;, &apos;options&apos;: [&apos;+ addition&apos;, &apos;- subtraction&apos;, &apos;* multiplication&apos;, &apos;/ division&apos;, &apos;% modulo&apos;, &apos;^ exponent&apos;]}" name="mathOperation" value="+ addition"/>
+          <string_parameter expression="getParam(&apos;OpScript_AttributeMath.executionMode&apos;).param.getFullName()" hints="{&apos;widget&apos;: &apos;teleparam&apos;}" name="executionMode"/>
+        </group_parameter>
+      </group_parameter>
+      <node baseType="Dot" name="Dot76" type="Dot" x="-5.0" y="-15.0">
+        <port name="input" source="AttributeMath.i0" type="in"/>
+        <port name="output" type="out"/>
+        <group_parameter name="Dot76"/>
+      </node>
+      <node baseType="OpScript" name="OpScript_AttributeMath" ns_errorGlow="0.0" type="OpScript" x="-5.06723" y="-69.9333">
+        <port name="i0" source="Dot76.output" type="in"/>
+        <port name="out" returns="o0" type="out"/>
+        <group_parameter name="OpScript_AttributeMath">
+          <string_parameter expression="ifelse( getParent().user.mode, getParent().user.CEL, getParent().user.path)" name="CEL"/>
+          <string_parameter name="location" value="/root/world/location"/>
+          <group_parameter name="script">
+            <string_parameter name="lua" value="-- Get user data&#0010;local numberAttributeName = Interface.GetOpArg(&quot;user.numberAttributeName&quot;):getValue()&#0010;local numberAttributeType = Interface.GetOpArg(&quot;user.numberAttributeType&quot;):getValue()&#0010;local floatValue = Interface.GetOpArg(&quot;user.floatValue&quot;):getValue()&#0010;local colorValue = Interface.GetOpArg(&quot;user.colorValue&quot;):getNearestSample(0)&#0010;local mathOperation = Interface.GetOpArg(&quot;user.mathOperation&quot;):getValue()&#0010;&#0010;&#0010;-- Return if numberAttributeName is not set properly&#0010;if numberAttributeName:find(&quot;Drop Attribute Here&quot;) then&#0010;    return&#0010;end&#0010;&#0010;-- Check to see if we need to cook the graph ( used to get default values of attributes on materials )&#0010;local attr = nil&#0010;if numberAttributeName:find(&quot;material.&quot;) then&#0010;    local OLP = Interface.GetOutputLocationPath()&#0010;    local mtlAttr = InterfaceUtils.CookDaps(&quot;material&quot;, OLP)&#0010;    attr = mtlAttr:getChildByName(numberAttributeName)&#0010;else&#0010;    attr = Interface.GetAttr(numberAttributeName)&#0010;end&#0010;&#0010;if not attr then&#0010;    return&#0010;end&#0010;&#0010;-- Setup dynamic function using a string expression built from the mathOperation using Lua&apos;s pcall&#0010;local op = mathOperation:match(&quot;^(%S+)&quot;)&#0010;local functionString = &quot;return function(a,b) return a&quot;..op..&quot;b end&quot;&#0010;local func, err = load(functionString)&#0010;local ok, pfunc = nil&#0010;if func then&#0010;    ok, pfunc = pcall(func)&#0010;else&#0010;    return&#0010;end&#0010;&#0010;-- Execute dynamic function and set new values&#0010;if numberAttributeType == &quot;float&quot; then&#0010;    local currentValue = attr:getValue()&#0010;    local result = pfunc(currentValue, floatValue)&#0010;    Interface.SetAttr(numberAttributeName, FloatAttribute(result))&#0010;&#0010;elseif numberAttributeType == &quot;color&quot; then&#0010;    local currentValue = attr:getNearestSample(0)&#0010;&#0010;    local r_result = pfunc(currentValue[1], colorValue[1])&#0010;    local g_result = pfunc(currentValue[2], colorValue[2])&#0010;    local b_result = pfunc(currentValue[3], colorValue[3])&#0010;    print(r_result, g_result, b_result)&#0010;&#0010;    Interface.SetAttr(numberAttributeName, FloatAttribute({r_result, g_result, b_result}))&#0010;end&#0010;&#0010;&#0010;"/>
+          </group_parameter>
+          <string_parameter name="executionMode" value="immediate"/>
+          <string_parameter name="applyWhere" value="at locations matching CEL"/>
+          <string_parameter name="applyWhen" value="during op resolve"/>
+          <string_parameter name="modifierNameMode" value="node name"/>
+          <string_parameter name="modifierName" value="modifier"/>
+          <string_parameter name="resolveIds" value="all"/>
+          <number_parameter name="recursiveEnable" value="0"/>
+          <string_parameter name="disableAt" value=""/>
+          <string_parameter name="inputBehavior" value="by index"/>
+          <number_parameter name="multisampleUserOpArgs" value="1"/>
+          <group_parameter hints="{}" name="user">
+            <string_parameter expression="=^/user.numberAttributeName" name="numberAttributeName"/>
+            <string_parameter expression="=^/user.numberAttributeType" name="numberAttributeType"/>
+            <number_parameter expression="=^/user.floatValue" isexpression="true" name="floatValue"/>
+            <numberarray_parameter hints="{&apos;widget&apos;: &apos;color&apos;}" name="colorValue" size="3" tupleSize="3">
+              <number_parameter expression="=^/user.colorValue.i0" isexpression="true" name="i0"/>
+              <number_parameter expression="=^/user.colorValue.i1" isexpression="true" name="i1"/>
+              <number_parameter expression="=^/user.colorValue.i2" isexpression="true" name="i2"/>
+            </numberarray_parameter>
+            <string_parameter expression="=^/user.mathOperation" name="mathOperation"/>
+          </group_parameter>
+        </group_parameter>
+      </node>
+    </node>
+  </node>
+</katana>
