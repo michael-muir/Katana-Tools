@@ -229,20 +229,12 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
         right_out.connect(apply_node.getInputPortByIndex(1))
         out_port.connect(apply_node.getOutputPortByIndex(0))
 
-    #        # setup producer for checking for updates
-    #        runtime = FnGeolib.GetRegisteredRuntimeInstance()
-    #        txn = runtime.createTransaction()
-    #        client = txn.createClient()
-    #        op = Nodes3DAPI.GetOp(txn, node)
-    #        txn.setClientOp(client, op)
-    #        runtime.commit(txn)
-    #
-    #        self._producer = Nodes3DAPI.GetGeometryProducer(top_dot, graphState=None, portIndex=0)
+        self._is_new = True
 
     def delete(self):
         """Delete this node."""
         Nodes3DAPI.UnregisterPortOpClient(self._port_op_client)
-        Utils.EventModule.UnregisterEventHandler(self._on_port_connect, "port_connect")
+        #        Utils.EventModule.UnregisterEventHandler(self._on_port_connect, "port_connect")
         super().delete()
 
     def upgrade(self):
@@ -263,9 +255,10 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
             self._init()
         else:
             Callbacks.addCallback(Callbacks.Type.onSceneLoad, self._init)
+            pass
 
     def _init(self, *args, **kwargs):
-        Utils.EventModule.RegisterEventHandler(self._on_port_connect, "port_connect")
+        #        Utils.EventModule.RegisterEventHandler(self._on_port_connect, "port_connect")
         self._port_op_client = LookFileMaterialsAddPortOpClient(
             node=self, callback=self._on_lookfile_attribute_changed
         )
@@ -286,16 +279,15 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
             ):
                 self._apply_opscript_cache = child
 
-    def _on_port_connect(self, *argv, **kwargs):
-        if not hasattr(self, "_connect_active") or not self._connect_active:
-            self._connect_active = True
-            Utils.EventModule.RegisterEventHandler(self._on_connected_idle, "event_idle")
-
-    def _on_connected_idle(self, *argv, **kwargs):
-        Utils.EventModule.UnregisterEventHandler(self._on_connected_idle, "event_idle")
-        locations = ast.literal_eval(self._node.getParameter("watch_list").getValue(0))
-        self.update(locations)
-        self._connect_active = False
+#    def _on_port_connect(self, *argv, **kwargs):
+#        if not hasattr(self, "_connect_active") or not self._connect_active:
+#            self._connect_active = True
+#            Utils.EventModule.RegisterEventHandler(self._on_connected_idle, "event_idle")
+#
+#    def _on_connected_idle(self, *argv, **kwargs):
+#        Utils.EventModule.UnregisterEventHandler(self._on_connected_idle, "event_idle")
+#        # do stuff
+#        self._connect_active = False
 
     def _on_lookfile_attribute_changed(self, locations: set[str]):
         if self.getInputPortByIndex(0).getNumConnectedPorts() == 0:
@@ -378,16 +370,18 @@ class LookFileMaterialsAddPortOpClient(Nodes3DAPI.PortOpClient.PortOpClient):
                 )
                 return
 
-            locations = ast.literal_eval(self._node.getParameter("watch_list").getValue(0))
+            locations = []
+            if len(self._node.getParameter("watch_list").getValue(0)) > 0:
+                locations = ast.literal_eval(self._node.getParameter("watch_list").getValue(0))
 
-            # print("locations to monitor = ", locations)
+                # print("locations to monitor = ", locations)
 
-            # Set up the Client by marking the relevant location as active.
-            self._client.setLocationsActive(locations)
+                # Set up the Client by marking the relevant location as active.
+                self._client.setLocationsActive(locations)
 
-            # Event handler to periodically process location events (i.e. the resulting events of
-            # the asynchronous cooking in a background thread).
-            Utils.EventModule.RegisterEventHandler(self._on_event_idle, "event_idle")
+                # Event handler to periodically process location events (i.e. the resulting
+                # events of the asynchronous cooking in a background thread).
+                Utils.EventModule.RegisterEventHandler(self._on_event_idle, "event_idle")
 
         txn.setClientOp(self._client, op)
 
