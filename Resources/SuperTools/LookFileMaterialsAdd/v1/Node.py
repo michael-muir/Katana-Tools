@@ -4,11 +4,13 @@ from __future__ import print_function
 
 import ast
 import logging
-from pathlib import Path
+
+# from pathlib import Path
 from typing import Callable
 
 from Katana import Callbacks, FnGeolib, NodegraphAPI, Nodes3DAPI, Utils
 
+from .Config import ADD_BUTTON_SCRIPT, APPLY_OPSCRIPT, CURRENT_DIRECTORY, RESET_OPSCRIPT
 from .Upgrade import Upgrade  # noqa
 
 LOG = logging.getLogger("laika.LookFileMaterialsAdd")
@@ -18,42 +20,6 @@ Y_SPACE = 50
 
 # fmt: off
 
-
-
-CURRENT_DIRECTORY = Path(__file__).resolve().parent
-
-ADD_BUTTON_SCRIPT = f"""\
-with open('{CURRENT_DIRECTORY}/scripts/add_button.py') as file:
-    exec(file.read())
-"""
-
-RESET_OPSCRIPT = """\
-resolvedAssetAttr = Interface.GetAttr('lookfile.resolvedAsset')
-
-if resolvedAssetAttr then
-    Interface.SetAttr('lookfile.asset', StringAttribute(resolvedAssetAttr:getValue()))
-    Interface.DeleteAttr('lookfile.resolvedAsset')
-    Interface.DeleteAttr('lookfile.resolvedPass')
-end
-"""
-
-APPLY_OPSCRIPT = """\
-mode = Interface.GetOpArg('user.version_mode'):getValue()
-location = Interface.GetOutputLocationPath()
-mtlAssignAttr = Interface.GetAttr("materialAssign", location, 1)
-
-if mtlAssignAttr then
-    mtlAssign = mtlAssignAttr:getValue()
-    if mode == 'current' then
-        mtlAssign = mtlAssign:gsub("/_%d%d%d/", "/current/")
-        mtlAssign = mtlAssign:gsub("/latest/", "/current/")
-    end
-    Interface.SetAttr("materialAssign", StringAttribute(mtlAssign))
-    Interface.DeleteAttr("material")
-end
-"""
-
-
 _PARAMETER_HINTS = {
     "LookFileMaterialsAdd.assets": {
         "help": "List of components (or assets) of which to load the lookfile materials from.",
@@ -61,19 +27,13 @@ _PARAMETER_HINTS = {
     },
     "LookFileMaterialsAdd.version_mode": {
         "help": "Specifies what version of the lookfile to reference for the materials.  The \
-        version mode becomes part of the lookfile material path. \
-        <li><b>version</b> - loads the version specified by the asset bundle or user and \
-        the loaded version is part of the lookfile material path(s).   This means that if the \
-        version changes from an asset bundle update or a change from the user, there is a \
-        potential for material edits to break because the klf material paths can change.\
-        <li><b>current</b> - auto updates the lookfile version with any asset bundle updates, \
-        while replacing the klf version in the material paths to 'current' so that the material \
-        paths do not change from underneath.  This prevents material edits from breaking, as the \
-        klf material path version is locked to 'current'.",
+        version becomes part of the lookfile material path when it is set to 'Only this version'. \
+        <p>The prefererred mode is 'All versions' so the material paths do not change with look \
+        file updates and will not break MaterialEdits downstream.",
         "label": "version mode",
         "widget": "popup",
-        "options": ['version', 'current'],
-        "default": "current"
+        "options": ['Only this version', 'All versions'],
+        "default": "All versions"
     },
     "LookFileMaterialsAdd.add_button": {
         "widget":"scriptButton",
@@ -87,9 +47,7 @@ _PARAMETER_HINTS = {
                              'conditionalVisPath': '../version_mode'},
     },
     "LookFileMaterialsAdd.loaded_lookfiles": {
-        "help":"List of the currently loaded lookfiles.   The displayed lookfile paths in the \
-        loaded_lookfiles section are not updated with the 'current' version tag, but are the \
-        actual versions that are being loaded into the scene.",
+        "help":"List of the currently loaded lookfiles.",
         "label": "loaded lookfiles",
         "readOnly":True,
         "open":True
@@ -115,12 +73,6 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
         return self._enable_groupmerge_cache
 
     @property
-    def _copy_stack(self):
-        if not hasattr(self, "_copy_stack_cache"):
-            self._find_child_nodes()
-        return self._copy_stack_cache
-
-    @property
     def _apply_opscript(self):
         if not hasattr(self, "_apply_opscript_cache"):
             self._find_child_nodes()
@@ -144,7 +96,7 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
         # build user interface
         parameters = self.getParameters()
         parameters.createChildString("assets", "")
-        parameters.createChildString("version_mode", "current")
+        parameters.createChildString("version_mode", "All versions")
         parameters.createChildString("add_button", "")
         parameters.createChildString("watch_list", "")
         parameters.createChildGroup("loaded_lookfiles")
@@ -174,29 +126,6 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
         next_out.connect(dot2_node.getInputPortByIndex(0))
         next_out = dot2_node.getOutputPortByIndex(0)
 
-        # left branch
-        dotl_node = NodegraphAPI.CreateNode("Dot", self)
-        NodegraphAPI.SetNodePosition(dotl_node, (-X_SPACE, -Y_SPACE * 4))
-        next_out.connect(dotl_node.getInputPortByIndex(0))
-        left_out = dotl_node.getOutputPortByIndex(0)
-
-        stack2_node = NodegraphAPI.CreateNode("GroupStack", self)
-        stack2_node.setName("HierarchyCopy_Stack")
-        stack2_node.setChildNodeType("HierarchyCopy")
-        NodegraphAPI.SetNodePosition(stack2_node, (-X_SPACE / 2, -Y_SPACE * 5))
-        left_out.connect(stack2_node.getInputPortByIndex(0))
-
-        switch_node = NodegraphAPI.CreateNode("Switch", self)
-        sw_in0 = switch_node.addInputPort("i0")
-        sw_in1 = switch_node.addInputPort("i1")
-        NodegraphAPI.SetNodePosition(switch_node, (-X_SPACE, -Y_SPACE * 6))
-        switch_node.getParameter("in").setExpression(
-            "ifelse(getParent().version_mode in ['current'], 1, 0)"
-        )
-        left_out.connect(sw_in0)
-        sw_in1.connect(stack2_node.getOutputPortByIndex(0))
-        left_out = switch_node.getOutputPortByIndex(0)
-
         # right branch
         dotr_node = NodegraphAPI.CreateNode("Dot", self)
         NodegraphAPI.SetNodePosition(dotr_node, (X_SPACE, -Y_SPACE * 4))
@@ -222,18 +151,17 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
         apply_node.addInputPort("i1")
         NodegraphAPI.SetNodePosition(apply_node, (0, -Y_SPACE * 7))
         apply_node.getParameter("script.lua").setValue(APPLY_OPSCRIPT, 0)
-        apply_node.getParameters().createChildGroup("user")
-        apply_node.getParameter("user").createChildString("version_mode", "")
-        apply_node.getParameter("user.version_mode").setExpression("=^/version_mode")
-        left_out.connect(apply_node.getInputPortByIndex(0))
+        next_out.connect(apply_node.getInputPortByIndex(0))
         right_out.connect(apply_node.getInputPortByIndex(1))
         out_port.connect(apply_node.getOutputPortByIndex(0))
 
         self._is_new = True
+        self.version = 1.0
 
     def delete(self):
         """Delete this node."""
-        Nodes3DAPI.UnregisterPortOpClient(self._port_op_client)
+        if hasattr(self, "_port_op_client"):
+            Nodes3DAPI.UnregisterPortOpClient(self._port_op_client)
         #        Utils.EventModule.UnregisterEventHandler(self._on_port_connect, "port_connect")
         super().delete()
 
@@ -259,6 +187,8 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
 
     def _init(self, *args, **kwargs):
         #        Utils.EventModule.RegisterEventHandler(self._on_port_connect, "port_connect")
+        self.upgrade()
+
         self._port_op_client = LookFileMaterialsAddPortOpClient(
             node=self, callback=self._on_lookfile_attribute_changed
         )
@@ -272,22 +202,20 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
                 "LookFileOverrideEnable_GroupMerge"
             ):
                 self._enable_groupmerge_cache = child
-            if child.getType() == "GroupStack" and child.getName().startswith("HierachyCopy_Stack"):
-                self._copy_stack_cache = child
             if child.getType() == "OpScript" and child.getName().startswith(
                 "OP_Apply_LookFile_Mtls"
             ):
                 self._apply_opscript_cache = child
 
-#    def _on_port_connect(self, *argv, **kwargs):
-#        if not hasattr(self, "_connect_active") or not self._connect_active:
-#            self._connect_active = True
-#            Utils.EventModule.RegisterEventHandler(self._on_connected_idle, "event_idle")
-#
-#    def _on_connected_idle(self, *argv, **kwargs):
-#        Utils.EventModule.UnregisterEventHandler(self._on_connected_idle, "event_idle")
-#        # do stuff
-#        self._connect_active = False
+    #        def _on_port_connect(self, *argv, **kwargs):
+    #            if not hasattr(self, "_connect_active") or not self._connect_active:
+    #                self._connect_active = True
+    #                Utils.EventModule.RegisterEventHandler(self._on_connected_idle, "event_idle")
+    #
+    #        def _on_connected_idle(self, *argv, **kwargs):
+    #            Utils.EventModule.UnregisterEventHandler(self._on_connected_idle, "event_idle")
+    #            # do stuff
+    #            self._connect_active = False
 
     def _on_lookfile_attribute_changed(self, locations: set[str]):
         if self.getInputPortByIndex(0).getNumConnectedPorts() == 0:
@@ -300,19 +228,24 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
         lookfiles = []
         for location in locations:
             sgLocation = producer.getProducerByPath(location)
-            resolvedAssetAttr = sgLocation.getAttribute("lookfile.resolvedAttr")
-            if resolvedAssetAttr:
-                lookfile = resolvedAssetAttr.getValue(0)
-                if lookfile not in lookfiles:
-                    lookfiles.append(lookfile)
+            if sgLocation:
+                resolvedAssetAttr = sgLocation.getAttribute("lookfile.resolvedAttr")
+                if resolvedAssetAttr:
+                    lookfile = resolvedAssetAttr.getValue(0)
+                    if lookfile not in lookfiles:
+                        lookfiles.append(lookfile)
+            else:
+                print("Cannot find location %s for LookFileMaterialsAdd %s" % location)
+                continue
 
         # compare incoming lookfiles against internal LookFileOverrideEnable nodes
-        overrideEnableNodes = self._enable_groupmerge_cache.getChildNodes()
-        for overrideNode in overrideEnableNodes:
-            lookfile = overrideNode.getParameter("lookfile").getValue(0)
-            if lookfile not in lookfiles:
-                stale = True
-                break
+        if len(lookfiles) > 0:
+            overrideEnableNodes = self._enable_groupmerge_cache.getChildNodes()
+            for overrideNode in overrideEnableNodes:
+                lookfile = overrideNode.getParameter("lookfile").getValue(0)
+                if lookfile not in lookfiles:
+                    stale = True
+                    break
 
         if stale:
             self.update(locations)
@@ -360,6 +293,10 @@ class LookFileMaterialsAddPortOpClient(Nodes3DAPI.PortOpClient.PortOpClient):
         """Method is called by Katana whenever the viewed Op Tree changes."""
 
         # print("LookFileMaterialsAddPortOpClient.opChanged")
+
+        # check for watch_list param - exit if does not exist
+        if not self._node.getParameter("watch_list"):
+            return
 
         if self._client is None:
             # Create the Geolib Runtime Client.
