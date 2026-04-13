@@ -1,0 +1,65 @@
+<katana release="6.5v7" version="6.0.1.000004">
+  <node name="__SAVE_exportedNodes" type="Group">
+    <node baseType="Group" edited="true" eyepointx="772.75" eyepointy="-701.5" eyepointz="10000.0" name="AttributeRandomize" ns_basicDisplay="1" ns_errorGlow="0.0" ns_fromContext="legacy" ns_iconName="" selected="true" type="Group" viewed="true" viewscalex="2.0" viewscaley="2.0" viewscalez="1.0" x="1012.5" y="-882.0">
+      <port name="i0" source="Dot293.output" type="in"/>
+      <port name="o0" type="out"/>
+      <group_parameter name="AttributeRandomize">
+        <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;}" name="user">
+          <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;}" name="CEL" value=""/>
+          <string_parameter hints="{&apos;help&apos;: &apos;The attribute name to override.&apos;, &apos;widget&apos;: &apos;attributeName&apos;}" name="attributeName" value="visible"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;popup&apos;, &apos;options&apos;: [&apos;integer&apos;, &apos;double&apos;, &apos;float&apos;, &apos;string&apos;], &apos;help&apos;: &apos;The type of the attribute that is overridden.&apos;}" name="attributeType" value="float"/>
+          <string_parameter hints="{&apos;help&apos;: &apos;The weights is a ratio of the frequency of occurence of something and is used to create a deterministic weighted selection.\n\nThis works for any ratio:\n\n&quot;1:1&quot; → 50/50\n&quot;2:3:5&quot; → 20% / 30% / 50%\n&quot;10:1&quot; → heavy bias&apos;}" name="weights" value="1;1"/>
+          <number_parameter hints="{&apos;help&apos;: &apos;Seed provides the user a way to change the psuedo random function to get different results&apos;}" name="seed" value="0"/>
+          <string_parameter expression="getParam(&apos;OP_AttributeRandomize.executionMode&apos;).param.getFullName()" hints="{&apos;widget&apos;: &apos;teleparam&apos;}" name="executionMode"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;separator&apos;, &apos;minimal&apos;: &apos;True&apos;, &apos;disableWidgetTypeSelection&apos;: &apos;True&apos;, &apos;panelArgs&apos;: {&apos;disableFrame&apos;: &apos;True&apos;, &apos;disableTypeLabel&apos;: &apos;True&apos;}}" name="" value=""/>
+          <number_parameter hints="{&apos;label&apos;: &apos;number of options&apos;, &apos;help&apos;: &quot;Number of options to select from when randomized. Be sure to hit the &apos;Build_Options&apos; button to update the options section of the user interface to be able to set the values for each option.&quot;}" name="number_of_options" value="2"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;scriptButton&apos;, &apos;scriptText&apos;: &quot;num_options = int(node.getParameter(&apos;user.number_of_options&apos;).getValue(0))\nattributeType = node.getParameter(&apos;user.attributeType&apos;).getValue(0)\n\n# update this nodes user interface\noptions = node.getParameter(&apos;user.numberOptions&apos;)\noptions.resizeArray(num_options)\noptions.finalizeValue()\noptions.sendSignal_finalize()\n\noptions = node.getParameter(&apos;user.stringOptions&apos;)\noptions.resizeArray(num_options)\noptions.finalizeValue()\noptions.sendSignal_finalize()\n\n# update internal OpScript&apos;s user interface\nop = node.getChildren()[0]\noptions = op.getParameter(&apos;user.numberOptions&apos;)\noptions.resizeArray(num_options)\nfor i in range(num_options):\n    op.getParameter(&apos;user.numberOptions.i%d&apos; % (i)).setExpression(&apos;=^/user.numberOptions.i%d&apos; % (i))\noptions.finalizeValue()\noptions.sendSignal_finalize()\n\noptions = op.getParameter(&apos;user.stringOptions&apos;)\noptions.resizeArray(num_options)\nfor i in range(num_options):\n    op.getParameter(&apos;user.stringOptions.i%d&apos; % (i)).setExpression(&apos;=^/user.stringOptions.i%d&apos; % (i))\noptions.finalizeValue()\noptions.sendSignal_finalize()&quot;}" name="Build_Options" value=""/>
+          <numberarray_parameter hints="{&apos;conditionalVisOps&apos;: {&apos;conditionalVisOp&apos;: &apos;notEqualTo&apos;, &apos;conditionalVisValue&apos;: &apos;string&apos;, &apos;conditionalVisPath&apos;: &apos;../attributeType&apos;}, &apos;label&apos;: &apos;options&apos;}" name="numberOptions" size="2" tupleSize="1">
+            <number_parameter name="i0" value="0"/>
+            <number_parameter name="i1" value="1"/>
+          </numberarray_parameter>
+          <stringarray_parameter hints="{&apos;conditionalVisOps&apos;: {&apos;conditionalVisOp&apos;: &apos;equalTo&apos;, &apos;conditionalVisValue&apos;: &apos;string&apos;, &apos;conditionalVisPath&apos;: &apos;../attributeType&apos;}, &apos;label&apos;: &apos;options&apos;}" name="stringOptions" size="2" tupleSize="1">
+            <string_parameter name="i0" value=""/>
+            <string_parameter name="i1" value=""/>
+          </stringarray_parameter>
+        </group_parameter>
+      </group_parameter>
+      <node baseType="OpScript" name="OP_AttributeRandomize" ns_errorGlow="0.0" type="OpScript" x="782.5" y="-686.5">
+        <port name="i0" source="AttributeRandomize.i0" type="in"/>
+        <port name="out" returns="o0" type="out"/>
+        <group_parameter name="OP_AttributeRandomize">
+          <string_parameter expression="=^/user.CEL" name="CEL"/>
+          <string_parameter name="location" value="/root/world/location"/>
+          <group_parameter name="script">
+            <string_parameter name="lua" value="fullpath = Interface.GetInputLocationPath()&#0010;&#0010;attributeName = Interface.GetOpArg(&apos;user.attributeName&apos;):getValue()&#0010;attributeType = Interface.GetOpArg(&apos;user.attributeType&apos;):getValue()&#0010;ratio_weights = Interface.GetOpArg(&apos;user.weights&apos;):getValue()&#0010;seed = Interface.GetOpArg(&apos;user.seed&apos;):getValue()&#0010;numberOptions = Interface.GetOpArg(&apos;user.numberOptions&apos;):getNearestSample(0)&#0010;stringOptions = Interface.GetOpArg(&apos;user.stringOptions&apos;):getNearestSample(0)&#0010;&#0010;&#0010;-- Parse ratio string&#0010;local weights = {}&#0010;local total = 0&#0010;&#0010;for num in string.gmatch(ratio_weights, &quot;%d+&quot;) do&#0010;    local w = tonumber(num)&#0010;    table.insert(weights, w)&#0010;    total = total + w&#0010;end&#0010;&#0010;-- Seed the random generator (deteriministic)&#0010;hash = ExpressionMath.stablehash(fullpath)&#0010;math.randomseed(seed+hash)&#0010;&#0010;-- Generate a number in [0,total]&#0010;local r = math.random(0, total)&#0010;&#0010;-- Determine which bucket it falls into&#0010;local cumulative = 0&#0010;local choice = 1&#0010;&#0010;for i, w in ipairs(weights) do&#0010;    cumulative = cumulative + w&#0010;    if r &lt; cumulative then&#0010;        choice = i&#0010;        break&#0010;    end&#0010;end&#0010;&#0010;if attributeType == &apos;string&apos; then&#0010;    result = stringOptions[choice]&#0010;else&#0010;    result = numberOptions[choice]&#0010;end&#0010;&#0010;if attributeType == &apos;integer&apos; then&#0010;    Interface.SetAttr(attributeName, IntAttribute(result))&#0010;elseif attributeType == &apos;double&apos; then&#0010;    Interface.SetAttr(attributeName, DoubleAttribute(result))&#0010;elseif attributeType == &apos;float&apos; then&#0010;    Interface.SetAttr(attributeName, FloatAttribute(result))&#0010;elseif attributeType == &apos;string&apos; then&#0010;    Interface.SetAttr(attributeName, StringAttribute(result))&#0010;end&#0010;"/>
+          </group_parameter>
+          <string_parameter name="executionMode" value="immediate"/>
+          <string_parameter name="applyWhere" value="at locations matching CEL"/>
+          <string_parameter name="applyWhen" value="during op resolve"/>
+          <string_parameter name="modifierNameMode" value="specified"/>
+          <string_parameter expression="@AttributeRandomize" name="modifierName"/>
+          <string_parameter name="resolveIds" value=""/>
+          <number_parameter name="recursiveEnable" value="0"/>
+          <string_parameter name="disableAt" value=""/>
+          <string_parameter name="inputBehavior" value="by index"/>
+          <number_parameter name="multisampleUserOpArgs" value="1"/>
+          <group_parameter hints="{}" name="user">
+            <string_parameter expression="=^/user.attributeName" name="attributeName"/>
+            <string_parameter expression="=^/user.attributeType" name="attributeType"/>
+            <string_parameter expression="=^/user.weights" name="weights"/>
+            <number_parameter expression="=^/user.seed" isexpression="true" name="seed"/>
+            <number_parameter expression="=^/user.number_of_options" isexpression="true" name="number_of_options"/>
+            <numberarray_parameter name="numberOptions" size="2" tupleSize="1">
+              <number_parameter expression="=^/user.numberOptions.i0" isexpression="true" name="i0"/>
+              <number_parameter expression="=^/user.numberOptions.i1" isexpression="true" name="i1"/>
+            </numberarray_parameter>
+            <stringarray_parameter name="stringOptions" size="2" tupleSize="1">
+              <string_parameter expression="=^/user.stringOptions.i0" name="i0"/>
+              <string_parameter expression="=^/user.stringOptions.i1" name="i1"/>
+            </stringarray_parameter>
+          </group_parameter>
+        </group_parameter>
+      </node>
+    </node>
+  </node>
+</katana>
