@@ -7,7 +7,7 @@
         <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;}" name="user">
           <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;}" name="CEL" value=""/>
           <string_parameter hints="{&apos;help&apos;: &apos;The attribute name to override.&apos;, &apos;widget&apos;: &apos;attributeName&apos;}" name="attributeName" value="visible"/>
-          <string_parameter hints="{&apos;widget&apos;: &apos;popup&apos;, &apos;options&apos;: [&apos;integer&apos;, &apos;double&apos;, &apos;float&apos;, &apos;string&apos;], &apos;help&apos;: &apos;The type of the attribute that is overridden.&apos;}" name="attributeType" value="float"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;popup&apos;, &apos;options&apos;: [&apos;integer&apos;, &apos;double&apos;, &apos;float&apos;, &apos;string&apos;], &apos;help&apos;: &apos;The type of the attribute that is overridden.&apos;}" name="attributeType" value="integer"/>
           <string_parameter hints="{&apos;help&apos;: &apos;The weights is a ratio of the frequency of occurence of something and is used to create a deterministic weighted selection.\n\nThis works for any ratio:\n\n&quot;1:1&quot; → 50/50\n&quot;2:3:5&quot; → 20% / 30% / 50%\n&quot;10:1&quot; → heavy bias&apos;}" name="weights" value="1;1"/>
           <number_parameter hints="{&apos;help&apos;: &apos;Seed provides the user a way to change the psuedo random function to get different results&apos;}" name="seed" value="0"/>
           <string_parameter expression="getParam(&apos;OP_AttributeRandomize.executionMode&apos;).param.getFullName()" hints="{&apos;widget&apos;: &apos;teleparam&apos;}" name="executionMode"/>
