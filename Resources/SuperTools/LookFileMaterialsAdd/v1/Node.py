@@ -218,6 +218,9 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
     #            self._connect_active = False
 
     def _on_lookfile_attribute_changed(self, locations: set[str]):
+        if self.isBypassed():
+            return
+
         if self.getInputPortByIndex(0).getNumConnectedPorts() == 0:
             return
 
@@ -235,7 +238,10 @@ class LookFileMaterialsAdd(NodegraphAPI.SuperTool):
                     if lookfile not in lookfiles:
                         lookfiles.append(lookfile)
             else:
-                print("Cannot find location %s for LookFileMaterialsAdd %s" % location)
+                print(
+                    "Cannot find location %s for LookFileMaterialsAdd %s"
+                    % (location, self.getName())
+                )
                 continue
 
         # compare incoming lookfiles against internal LookFileOverrideEnable nodes
@@ -344,3 +350,4 @@ class LookFileMaterialsAddPortOpClient(Nodes3DAPI.PortOpClient.PortOpClient):
 
         if changed_locations:
             self._callback(changed_locations)
+
