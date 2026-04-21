@@ -1,23 +1,24 @@
 <katana release="6.5v7" version="6.0.1.000004">
   <node name="__SAVE_exportedNodes" type="Group">
-    <node autorenameallowed="false" baseType="Group" edited="true" eyepointx="117.438" eyepointy="114.875" eyepointz="10000.0" modTime="1216260096" name="PruneByVolume" ns_basicDisplay="1.0" ns_bubbleZoom="0.0" ns_errorGlow="0.0" ns_fromContext="legacy" ns_iconName="" selected="true" type="Group" viewed="true" viewscalex="1.0" viewscaley="1.0" viewscalez="1.0" x="833.185" y="-652.282">
+    <node autorenameallowed="false" baseType="Group" edited="true" eyepointx="145.875" eyepointy="21.625" eyepointz="10000.0" modTime="1216260096" name="PruneByVolume" ns_basicDisplay="1.0" ns_bubbleZoom="0.0" ns_errorGlow="0.0" ns_fromContext="legacy" ns_iconName="" selected="true" type="Group" viewed="true" viewscalex="1.0" viewscaley="1.0" viewscalez="1.0" x="845.184" y="-891.256">
       <port name="i0" source="Prune_fuzz_and_fog.out" type="in"/>
       <port name="o0" type="out"/>
       <group_parameter name="PruneByVolume">
         <group_parameter hints="{&apos;hideTitle&apos;: &apos;True&apos;}" name="user">
-          <string_parameter hints="{&apos;widget&apos;: &apos;scenegraphLocation&apos;}" name="searchUnder" value=""/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;scenegraphLocation&apos;}" name="searchUnder" value="/root/world/geo"/>
           <number_parameter hints="{&apos;options__order&apos;: [&apos;inside&apos;, &apos;outside&apos;], &apos;widget&apos;: &apos;mapper&apos;, &apos;options&apos;: {&apos;inside&apos;: 1.0, &apos;outside&apos;: 0.0}}" name="insideOrOutsideTheBox" value="1"/>
           <number_parameter hints="{&apos;options__order&apos;: [&apos;intersection&apos;, &apos;containment&apos;], &apos;widget&apos;: &apos;mapper&apos;, &apos;options&apos;: {&apos;intersection&apos;: 0.0, &apos;containment&apos;: 1.0}}" name="mode" value="0"/>
-          <number_parameter hints="{&apos;help&apos;: &apos;&lt;p&gt;volume in cubic units (i.e. centimenters cubed).\n&lt;p&gt;1 cubic centimeter == 1\n&lt;p&gt;1 cubic meter ==  1.0e+06\n&lt;p&gt;5 cubic meters == 1.25e+08&apos;}" name="max_volume" value="100000"/>
+          <number_parameter hints="{&apos;help&apos;: &apos;&lt;p&gt;volume in cubic units (i.e. centimenters cubed).\n&lt;p&gt;1 cubic centimeter == 1\n&lt;p&gt;1 cubic meter ==  1.0e+06\n&lt;p&gt;5 cubic meters == 1.25e+08&apos;}" name="max_volume" value="1000000"/>
           <number_parameter hints="{&apos;options__order&apos;: [&apos;less than volume&apos;, &apos;more than volume&apos;], &apos;widget&apos;: &apos;mapper&apos;, &apos;options&apos;: {&apos;less than volume&apos;: 0.0, &apos;more than volume&apos;: 1.0}}" name="volume_mode" value="0"/>
-          <string_parameter hints="{&apos;widget&apos;: &apos;scriptButton&apos;, &apos;buttonText&apos;: &apos;Find Components&apos;, &apos;scriptText&apos;: &apos;import Nodes3DAPI, NodegraphAPI\nimport GeoAPI.Util.Matrix as Matrix\nimport time, sys\nfrom functools import reduce\n\nimport Katana\n#if hasattr(Katana, \&apos;qt\&apos;):\n#    qt = Katana.qt\n#else:\n#    from Katana import QtGui, QtCore\n#    qt = QtGui\n\n\n# //////////////////////////////////////////////////////////////////////////////\n\ndef GetWorldSpaceAxisAlignedBoundsForProducer(producer):\n    try:\n        nx, px, ny, py, nz, pz = producer.getAttribute(\&apos;bound\&apos;).getData()\n    except:\n        return None\n    \n    inputPoints = [\n        [nx, ny, nz],\n        [nz, ny, pz],\n        [nx, py, pz],\n        [px, py, pz],\n        [px, py, nz],\n        [px, ny, nz],\n        [nz, py, nz],\n        [px, ny, pz],\n    ]\n    matrix = producer.getFlattenedGlobalXform()\n    \n    for point in inputPoints:\n        Matrix.xformPointByMatrix( point,  matrix )\n    \n    nx = reduce(min, [p[0] for p in inputPoints])\n    px = reduce(max, [p[0] for p in inputPoints])\n    ny = reduce(min, [p[1] for p in inputPoints])\n    py = reduce(max, [p[1] for p in inputPoints])\n    nz = reduce(min, [p[2] for p in inputPoints])\n    pz = reduce(max, [p[2] for p in inputPoints])\n    \n    return nx, px, ny, py, nz, pz\n\n# //////////////////////////////////////////////////////////////////////////////\n\ndef Containment( b2, b1):\n    return ((b1[0] &gt;= b2[0] ) and (b1[1] &lt;= b2[1] )) and \\\n           ((b1[2] &gt;= b2[2] ) and (b1[3] &lt;= b2[3] )) and \\\n           ((b1[4] &gt;= b2[4] ) and (b1[5] &lt;= b2[5] ))\n\ndef IntersectBounds( b1, b2 ):\n    return ((b1[0] &lt;= b2[1] ) and (b1[1] &gt;= b2[0] )) and \\\n           ((b1[2] &lt;= b2[3] ) and (b1[3] &gt;= b2[2] )) and \\\n           ((b1[4] &lt;= b2[5] ) and (b1[5] &gt;= b2[4] ))\n\ndef VolumeTest(b1, volume, volume_mode):\n    xtra = 1.0e-5\n    mvol = abs((b1[1] - b1[0] + xtra) * (b1[3] - b1[2] + xtra) * (b1[5] - b1[4]) + xtra)\n\n    if volume_mode == 1:\n        return mvol &gt;= volume\n    else:\n        return mvol &lt;= volume\n\n# //////////////////////////////////////////////////////////////////////////////\n\nclass InterruptException(RuntimeError):\n    pass\n\ndef WalkLocation(producer, bounds, include=True, result=None, progressCallback=None, contain=True, volume=0, volume_mode=0):\n    if result is None:\n        result = []\n    if progressCallback: progressCallback(producer.getName())\n    \n    locationType = producer.getType()\n    \n    if locationType in (\&apos;assembly\&apos;, \&apos;component\&apos;):\n        localBounds = GetWorldSpaceAxisAlignedBoundsForProducer(producer)\n        if localBounds:\n            \n            if contain:\n                test = Containment( bounds, localBounds)\n            else:\n                test = IntersectBounds( bounds, localBounds)\n\n            if test:\n                if include:\n                    vtest = VolumeTest(localBounds, volume, volume_mode)\n                    if vtest:\n                        result.append(producer.getFullName())\n            elif not include:\n                vtest = VolumeTest(localBounds, volume, volume_mode)\n                if vtest:\n                    result.append(producer.getFullName())\n    \n\n    if locationType == \&apos;component\&apos;:\n        return result\n    \n    \n    child = producer.getFirstChild()\n    \n    while child:\n        WalkLocation(child, bounds, include, result, progressCallback, contain, volume, volume_mode)\n        child = child.getNextSibling()\n    \n    \n    return result\n    \n\n# //////////////////////////////////////////////////////////////////////////////\n\n\ng_lastUpdate = time.time()\ng_interruptWidget = None\n\ndef ProgressCallback(location):\n    global g_lastUpdate\n    global g_interruptWidget\n    if not g_interruptWidget:\n        return\n    \n    g_interruptWidget.update( \&apos;searching: \&apos; + location )\n    \n    if time.time() - g_lastUpdate &gt; 0.05:\n        #qt.qApp.processEvents()\n        Utils.EventModule.ProcessAllEvents()\n        g_lastUpdate = time.time()\n\ndef InterruptCallback():\n    raise InterruptException(\&apos;interrupted\&apos;)\n\n\n# //////////////////////////////////////////////////////////////////////////////\n\nprimitiveNode = None\n#get the producer for child node:\nfor child in node.getChildren():\n    if child.getType() == \&apos;PrimitiveCreate\&apos;:\n        primitiveNode = child\n        break\n\nif not primitiveNode:\n    sys.exit()\n\nif os.environ[\&apos;KATANA_VERSION\&apos;].startswith(\&apos;1.4\&apos;):\n    boxProducer = Nodes3DAPI.GetGeometryProducer(primitiveNode.getOutputPortByIndex(0), NodegraphAPI.GetCurrentTime())\nelse:\n    boxProducer = Nodes3DAPI.GetGeometryProducer(primitiveNode, NodegraphAPI.GetCurrentTime())\n\nboxLocation = boxProducer.getProducerByPath(\&apos;/root/world/find_box\&apos;)\n\nfindBounds = GetWorldSpaceAxisAlignedBoundsForProducer( boxLocation )\n\n\n#sourcePort, sourceTime = node.getSourcePort(node.getInputPortByIndex(0), NodegraphAPI.GetCurrentTime())\nsourcePort, sourceTime = node.getInputSource(node.getInputPortByIndex(0).getName(), NodegraphAPI.GetCurrentTime())\n\nprint(&quot;HELLO&quot;, sourcePort, sourceTime)\n\nif os.environ[\&apos;KATANA_VERSION\&apos;].startswith(\&apos;1.4\&apos;):\n    sourceProducer = Nodes3DAPI.GetGeometryProducer(sourcePort, sourceTime)\nelse:\n    sourceProducer = Nodes3DAPI.GetGeometryProducer(sourcePort.getNode(), sourceTime, sourcePort.getIndex())\n\nsourceProducer = sourceProducer.getProducerByPath( node.getParameter(\&apos;user.searchUnder\&apos;).getValue(sourceTime) )\n\n\n# //////////////////////////////////////////////////////////////////////////////\n\n\ng_interruptWidget = Widgets.ModalProcessInterruptWidget(InterruptCallback)\ng_interruptWidget.setFixedWidth(512)\ng_interruptWidget.show()\n#qt.qApp.processEvents()\nUtils.EventModule.ProcessAllEvents()\n\ntry:\n    result = WalkLocation( sourceProducer,\n            findBounds,\n            include=node.getParameter(\&apos;user.insideOrOutsideTheBox\&apos;).getValue(0),\n            progressCallback=ProgressCallback,\n            contain=node.getParameter(\&apos;user.mode\&apos;).getValue(0),\n            volume=node.getParameter(\&apos;user.max_volume\&apos;).getValue(0),\n            volume_mode=node.getParameter(\&apos;user.volume_mode\&apos;).getValue(0),\n    )\nexcept InterruptException:\n    g_interruptWidget.close()\n    del g_interruptWidget\n    sys.exit()\n\nnode.getParameter(\&apos;user.CEL\&apos;).setValue( \&apos;(\&apos; + \&apos; \&apos;.join(result) + \&apos;)\&apos;, 0 )\n\ng_interruptWidget.close()\ndel g_interruptWidget\n\n&apos;}" name="newParameter" value=""/>
+          <number_parameter hints="{&apos;widget&apos;: &apos;checkBox&apos;}" name="display_label" value="0"/>
+          <string_parameter hints="{&apos;widget&apos;: &apos;scriptButton&apos;, &apos;buttonText&apos;: &apos;Find Components&apos;, &apos;scriptText&apos;: &quot;import Nodes3DAPI, NodegraphAPI\nimport GeoAPI.Util.Matrix as Matrix\nimport time, sys\nfrom functools import reduce\n\n\n\n# //////////////////////////////////////////////////////////////////////////////\n\ndef GetWorldSpaceAxisAlignedBoundsForProducer(producer):\n    try:\n        nx, px, ny, py, nz, pz = producer.getAttribute(&apos;bound&apos;).getData()\n    except:\n        return None\n    \n    inputPoints = [\n        [nx, ny, nz],\n        [nx, ny, pz],\n        [nx, py, nz],\n        [nx, py, pz],\n        [px, ny, nz],\n        [px, ny, pz],\n        [px, py, nz],\n        [px, py, pz],\n    ]\n    matrix = producer.getFlattenedGlobalXform()\n    \n    for point in inputPoints:\n        Matrix.xformPointByMatrix( point,  matrix )\n    \n    nx = reduce(min, [p[0] for p in inputPoints])\n    px = reduce(max, [p[0] for p in inputPoints])\n    ny = reduce(min, [p[1] for p in inputPoints])\n    py = reduce(max, [p[1] for p in inputPoints])\n    nz = reduce(min, [p[2] for p in inputPoints])\n    pz = reduce(max, [p[2] for p in inputPoints])\n    \n    return nx, px, ny, py, nz, pz\n\n# //////////////////////////////////////////////////////////////////////////////\n\ndef Containment( b2, b1):\n    return ((b1[0] &gt;= b2[0] ) and (b1[1] &lt;= b2[1] )) and \\\n           ((b1[2] &gt;= b2[2] ) and (b1[3] &lt;= b2[3] )) and \\\n           ((b1[4] &gt;= b2[4] ) and (b1[5] &lt;= b2[5] ))\n\ndef IntersectBounds( b1, b2 ):\n    return ((b1[0] &lt;= b2[1] ) and (b1[1] &gt;= b2[0] )) and \\\n           ((b1[2] &lt;= b2[3] ) and (b1[3] &gt;= b2[2] )) and \\\n           ((b1[4] &lt;= b2[5] ) and (b1[5] &gt;= b2[4] ))\n\ndef VolumeTest(b1, volume, volume_mode):\n    xtra = 1.0e-5\n\n    dx = (b1[1] - b1[0]) + xtra\n    dy = (b1[3] - b1[2]) + xtra\n    dz = (b1[5] - b1[4]) + xtra\n\n    mvol = abs(dx * dy * dz)\n\n    if volume_mode == 1:\n        return mvol &gt;= volume\n    else:\n        return mvol &lt;= volume\n\n# //////////////////////////////////////////////////////////////////////////////\n\nclass InterruptException(RuntimeError):\n    pass\n\ndef WalkLocation(producer, bounds, include=True, result=None, progressCallback=None, contain=True, volume=0, volume_mode=0):\n    if result is None:\n        result = []\n    if progressCallback: progressCallback(producer.getName())\n    \n    locationType = producer.getType()\n    \n    if locationType in (&apos;assembly&apos;, &apos;component&apos;):\n        localBounds = GetWorldSpaceAxisAlignedBoundsForProducer(producer)\n        if localBounds:\n            \n            if contain:\n                test = Containment( bounds, localBounds)\n            else:\n                test = IntersectBounds( bounds, localBounds)\n\n            if test:\n                if include:\n                    vtest = VolumeTest(localBounds, volume, volume_mode)\n                    if vtest:\n                        result.append(producer.getFullName())\n            elif not include:\n                vtest = VolumeTest(localBounds, volume, volume_mode)\n                if vtest:\n                    result.append(producer.getFullName())\n    \n\n    if locationType == &apos;component&apos;:\n        return result\n    \n    \n    child = producer.getFirstChild()\n    \n    while child:\n        WalkLocation(child, bounds, include, result, progressCallback, contain, volume, volume_mode)\n        child = child.getNextSibling()\n    \n    \n    return result\n    \n\n# //////////////////////////////////////////////////////////////////////////////\n\n\ng_lastUpdate = time.time()\ng_interruptWidget = None\n\ndef ProgressCallback(location):\n    global g_lastUpdate\n    global g_interruptWidget\n    if not g_interruptWidget:\n        return\n    \n    g_interruptWidget.update( &apos;searching: &apos; + location )\n    \n    if time.time() - g_lastUpdate &gt; 0.05:\n        Utils.EventModule.ProcessAllEvents()\n        g_lastUpdate = time.time()\n\ndef InterruptCallback():\n    raise InterruptException(&apos;interrupted&apos;)\n\n\n# //////////////////////////////////////////////////////////////////////////////\n\nprimitiveNode = None\n#get the producer for child node:\nfor child in node.getChildren():\n    if child.getType() == &apos;PrimitiveCreate&apos;:\n        primitiveNode = child\n        break\n\nif not primitiveNode:\n    sys.exit()\n\n\nboxProducer = Nodes3DAPI.GetGeometryProducer(primitiveNode, NodegraphAPI.GetCurrentTime())\nfindBoxProducer = boxProducer.getProducerByPath(&apos;/root/world/find_box&apos;)\nfindBounds = GetWorldSpaceAxisAlignedBoundsForProducer(findBoxProducer)\n\nsourcePort = node.getReturnPort(&apos;o0&apos;)\n#sourcePort, sourceTime = node.getSourcePort(node.getInputPortByIndex(0), NodegraphAPI.GetCurrentTime())\nsourceProducer = Nodes3DAPI.GetGeometryProducer(sourcePort.getNode(), NodegraphAPI.GetCurrentTime(), sourcePort.getIndex())\nsourceProducer = sourceProducer.getProducerByPath( node.getParameter(&apos;user.searchUnder&apos;).getValue(NodegraphAPI.GetCurrentTime()) )\n\n\n# //////////////////////////////////////////////////////////////////////////////\n\n\ng_interruptWidget = Widgets.ModalProcessInterruptWidget(InterruptCallback)\ng_interruptWidget.setFixedWidth(512)\ng_interruptWidget.show()\nUtils.EventModule.ProcessAllEvents()\n\ntry:\n    result = WalkLocation( sourceProducer,\n            findBounds,\n            include=node.getParameter(&apos;user.insideOrOutsideTheBox&apos;).getValue(0),\n            progressCallback=ProgressCallback,\n            contain=node.getParameter(&apos;user.mode&apos;).getValue(0),\n            volume=node.getParameter(&apos;user.max_volume&apos;).getValue(0),\n            volume_mode=node.getParameter(&apos;user.volume_mode&apos;).getValue(0),\n    )\nexcept InterruptException:\n    g_interruptWidget.close()\n    del g_interruptWidget\n    sys.exit()\n\nnode.getParameter(&apos;user.CEL&apos;).setValue( &apos;(&apos; + &apos; &apos;.join(result) + &apos;)&apos;, 0 )\n\ng_interruptWidget.close()\ndel g_interruptWidget\n\n&quot;}" name="newParameter" value=""/>
           <string_parameter hints="{&apos;widget&apos;: &apos;cel&apos;}" name="CEL" value=""/>
         </group_parameter>
       </group_parameter>
-      <node baseType="PrimitiveCreate" name="PrimitiveCreate28" type="PrimitiveCreate" x="144.632" y="152.475">
+      <node baseType="PrimitiveCreate" name="PrimitiveCreate30" type="PrimitiveCreate" x="208.018" y="182.975">
         <port name="out" type="out"/>
-        <group_parameter name="PrimitiveCreate28">
-          <string_parameter name="name" useNodeDefault="false" value="/root/world/find_box"/>
+        <group_parameter name="PrimitiveCreate30">
+          <string_parameter name="name" value="/root/world/find_box"/>
           <string_parameter name="type" useNodeDefault="false" value="cube"/>
           <string_parameter name="fileName" value=""/>
           <string_parameter name="previewTexture" value=""/>
@@ -29,9 +30,9 @@
             <string_parameter name="transformOrder" value="Scale Rotate Translate"/>
             <string_parameter name="rotationOrder" value="XYZ"/>
             <group_parameter name="translate">
-              <number_parameter name="x" useNodeDefault="false" value="0"/>
-              <number_parameter name="y" useNodeDefault="false" value="0"/>
-              <number_parameter name="z" useNodeDefault="false" value="0"/>
+              <number_parameter name="x" useNodeDefault="false" value="14.87198"/>
+              <number_parameter name="y" useNodeDefault="false" value="-29.82429209728075"/>
+              <number_parameter name="z" useNodeDefault="false" value="637.9808389096579"/>
             </group_parameter>
             <group_parameter name="rotate">
               <number_parameter name="x" value="0"/>
@@ -39,9 +40,9 @@
               <number_parameter name="z" value="0"/>
             </group_parameter>
             <group_parameter name="scale">
-              <number_parameter name="x" useNodeDefault="false" value="110"/>
-              <number_parameter name="y" useNodeDefault="false" value="100"/>
-              <number_parameter name="z" useNodeDefault="false" value="100"/>
+              <number_parameter name="x" useNodeDefault="false" value="169.4214876041244"/>
+              <number_parameter name="y" useNodeDefault="false" value="169.4214876041244"/>
+              <number_parameter name="z" useNodeDefault="false" value="169.4214876041244"/>
             </group_parameter>
             <group_parameter name="matrix">
               <number_parameter name="m00" value="1"/>
@@ -69,11 +70,11 @@
           <string_parameter name="claimExclusivity" value="Yes"/>
         </group_parameter>
       </node>
-      <node baseType="Merge" name="Merge65" type="Merge" x="-12.9587" y="24.2592">
+      <node baseType="Merge" name="Merge96" type="Merge" x="-12.9587" y="24.2592">
         <port name="i0" source="PruneByVolume.i0" type="in"/>
-        <port name="i1" source="VisibilityAssign5.out" type="in"/>
+        <port name="i1" source="ViewerObjectSettings22.out" type="in"/>
         <port name="out" type="out"/>
-        <group_parameter name="Merge65">
+        <group_parameter name="Merge96">
           <string_parameter name="showAdvancedOptions" value="No"/>
           <group_parameter name="advanced">
             <string_parameter name="sumBounds" value="No"/>
@@ -91,10 +92,10 @@
           </group_parameter>
         </group_parameter>
       </node>
-      <node baseType="GenericAssign" name="VisibilityAssign5" type="VisibilityAssign" x="144.632" y="112.244">
-        <port name="input" source="PrimitiveCreate28.out" type="in"/>
+      <node baseType="GenericAssign" name="VisibilityAssign6" type="VisibilityAssign" x="208.018" y="150.744">
+        <port name="input" source="PrimitiveCreate30.out" type="in"/>
         <port name="out" type="out"/>
-        <group_parameter name="VisibilityAssign5">
+        <group_parameter name="VisibilityAssign6">
           <string_parameter name="CEL" value="(/root/world/find_box)"/>
           <string_parameter name="location" value=""/>
           <group_parameter name="args">
@@ -108,14 +109,158 @@
           </group_parameter>
         </group_parameter>
       </node>
-      <node baseType="Prune" name="Prune9" type="Prune" x="-14.1581" y="-10.7347">
-        <port name="A" source="Merge65.out" type="in"/>
+      <node baseType="Prune" name="Prune10" type="Prune" x="-12.9587" y="-22.2347">
+        <port name="A" source="Merge96.out" type="in"/>
         <port name="out" returns="o0" type="out"/>
-        <group_parameter name="Prune9">
+        <group_parameter name="Prune10">
           <string_parameter expression="getParent().user.CEL" name="cel"/>
+        </group_parameter>
+      </node>
+      <node baseType="GenericAssign" name="ViewerObjectSettings22" type="ViewerObjectSettings" x="208.018" y="110.259">
+        <port name="input" source="VisibilityAssign6.out" type="in"/>
+        <port name="out" type="out"/>
+        <group_parameter name="ViewerObjectSettings22">
+          <string_parameter name="CEL" value="(/root/world/find_box)"/>
+          <string_parameter name="location" value=""/>
+          <group_parameter name="args">
+            <group_parameter name="viewer">
+              <string_parameter name="__hints" persistant="false" value="{&apos;hideTitle&apos;: &apos;True&apos;, &apos;name&apos;: &apos;viewer&apos;}"/>
+              <group_parameter name="default">
+                <string_parameter name="__hints" persistant="false" value="{&apos;hideTitle&apos;: &apos;True&apos;, &apos;name&apos;: &apos;default&apos;}"/>
+                <group_parameter name="drawOptions">
+                  <string_parameter name="__hints" persistant="false" value="{&apos;name&apos;: &apos;drawOptions&apos;}"/>
+                  <group_parameter name="hide">
+                    <number_parameter name="enable" value="0"/>
+                    <number_parameter name="value" value="0"/>
+                    <number_parameter name="default" value="0"/>
+                    <string_parameter name="type" value="IntAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;0&apos;, &apos;int&apos;: &apos;True&apos;, &apos;name&apos;: &apos;hide&apos;, &apos;widget&apos;: &apos;boolean&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="fill">
+                    <number_parameter name="enable" value="0"/>
+                    <string_parameter name="value" value="inherit"/>
+                    <string_parameter name="default" value="inherit"/>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;inherit&apos;, &apos;name&apos;: &apos;fill&apos;, &apos;options&apos;: &apos;points|wireframe|solid&apos;, &apos;widget&apos;: &apos;popup&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="light">
+                    <number_parameter name="enable" value="0"/>
+                    <string_parameter name="value" value="inherit"/>
+                    <string_parameter name="default" value="inherit"/>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;inherit&apos;, &apos;name&apos;: &apos;light&apos;, &apos;options&apos;: &apos;default|shaded&apos;, &apos;widget&apos;: &apos;popup&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="smoothing">
+                    <number_parameter name="enable" value="0"/>
+                    <string_parameter name="value" value="inherit"/>
+                    <string_parameter name="default" value="inherit"/>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;inherit&apos;, &apos;name&apos;: &apos;smoothing&apos;, &apos;options&apos;: &apos;off|lines|points|both&apos;, &apos;widget&apos;: &apos;popup&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="windingOrder">
+                    <number_parameter name="enable" value="0"/>
+                    <string_parameter name="value" value="inherit"/>
+                    <string_parameter name="default" value="inherit"/>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;inherit&apos;, &apos;name&apos;: &apos;windingOrder&apos;, &apos;options&apos;: &apos;clockwise|counterclockwise&apos;, &apos;widget&apos;: &apos;popup&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="pointSize">
+                    <number_parameter name="enable" value="0"/>
+                    <number_parameter name="value" value="4"/>
+                    <number_parameter name="default" value="4"/>
+                    <string_parameter name="type" value="FloatAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;4&apos;, &apos;name&apos;: &apos;pointSize&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="color">
+                    <number_parameter name="enable" value="0"/>
+                    <numberarray_parameter name="value" size="3" tupleSize="1">
+                      <number_parameter name="i0" value="0"/>
+                      <number_parameter name="i1" value="0"/>
+                      <number_parameter name="i2" value="0.5"/>
+                    </numberarray_parameter>
+                    <numberarray_parameter name="default" size="3" tupleSize="1">
+                      <number_parameter name="i0" value="0.4000000059604645"/>
+                      <number_parameter name="i1" value="0.4000000059604645"/>
+                      <number_parameter name="i2" value="0.4000000059604645"/>
+                    </numberarray_parameter>
+                    <string_parameter name="type" value="FloatAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;color_restrictComponents&apos;: &apos;True&apos;, &apos;default&apos;: &apos;0.4,0.4,0.4&apos;, &apos;name&apos;: &apos;color&apos;, &apos;size&apos;: &apos;3&apos;, &apos;widget&apos;: &apos;color&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="faceCulling">
+                    <number_parameter name="enable" value="1"/>
+                    <string_parameter name="value" value="none"/>
+                    <string_parameter name="default" value="inherit"/>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;inherit&apos;, &apos;name&apos;: &apos;faceCulling&apos;, &apos;options&apos;: &apos;back|front|none&apos;, &apos;widget&apos;: &apos;popup&apos;}"/>
+                  </group_parameter>
+                </group_parameter>
+                <group_parameter name="annotation">
+                  <string_parameter name="__hints" persistant="false" value="{&apos;name&apos;: &apos;annotation&apos;}"/>
+                  <group_parameter name="text">
+                    <number_parameter name="enable" value="1"/>
+                    <string_parameter expression="ifelse(getParent().user.display_label, &apos;find_box&apos;, &apos;&apos;)" name="value"/>
+                    <string_parameter name="default" value=""/>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;&apos;, &apos;name&apos;: &apos;text&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="color">
+                    <number_parameter name="enable" value="0"/>
+                    <numberarray_parameter name="value" size="3" tupleSize="1">
+                      <number_parameter name="i0" value="0.4000000059604645"/>
+                      <number_parameter name="i1" value="0.4000000059604645"/>
+                      <number_parameter name="i2" value="0.4000000059604645"/>
+                    </numberarray_parameter>
+                    <numberarray_parameter name="default" size="3" tupleSize="1">
+                      <number_parameter name="i0" value="0.4000000059604645"/>
+                      <number_parameter name="i1" value="0.4000000059604645"/>
+                      <number_parameter name="i2" value="0.4000000059604645"/>
+                    </numberarray_parameter>
+                    <string_parameter name="type" value="FloatAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;color_restrictComponents&apos;: &apos;True&apos;, &apos;default&apos;: &apos;0.4,0.4,0.4&apos;, &apos;name&apos;: &apos;color&apos;, &apos;size&apos;: &apos;3&apos;, &apos;widget&apos;: &apos;color&apos;}"/>
+                  </group_parameter>
+                </group_parameter>
+                <group_parameter name="pickable">
+                  <number_parameter name="enable" value="0"/>
+                  <number_parameter name="value" value="1"/>
+                  <number_parameter name="default" value="1"/>
+                  <string_parameter name="type" value="IntAttr"/>
+                  <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;1&apos;, &apos;int&apos;: &apos;True&apos;, &apos;name&apos;: &apos;pickable&apos;, &apos;widget&apos;: &apos;boolean&apos;}"/>
+                </group_parameter>
+                <group_parameter name="resolveMaterialInViewer">
+                  <number_parameter name="enable" value="0"/>
+                  <string_parameter name="value" value="always"/>
+                  <string_parameter name="default" value="default"/>
+                  <string_parameter name="type" value="StringAttr"/>
+                  <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;default&apos;, &apos;help&apos;: &apos;Controls whether the viewer should always, never or use default rules to resolve materials.&apos;, &apos;name&apos;: &apos;resolveMaterialInViewer&apos;, &apos;options&apos;: &apos;default|always|never&apos;, &apos;widget&apos;: &apos;popup&apos;}"/>
+                </group_parameter>
+                <group_parameter name="lightingTools">
+                  <string_parameter name="__hints" persistant="false" value="{&apos;name&apos;: &apos;lightingTools&apos;}"/>
+                  <group_parameter name="parameters">
+                    <number_parameter name="enable" value="0"/>
+                    <stringarray_parameter name="value" size="2" tupleSize="2">
+                      <string_parameter name="i0" value=""/>
+                      <string_parameter name="i1" value=""/>
+                    </stringarray_parameter>
+                    <stringarray_parameter name="default" size="2" tupleSize="2">
+                      <string_parameter name="i0" value=""/>
+                      <string_parameter name="i1" value=""/>
+                    </stringarray_parameter>
+                    <string_parameter name="type" value="StringAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;,&apos;, &apos;help&apos;: &apos;List of extra parameters that will be displayed in the Lighting Tools UI when a light is selected, provided the parameters are present in the light.\n&lt;br /&gt;\n&lt;br /&gt;\nThe parameters will be appended after the default parameters (\n&lt;b&gt;Intensity&lt;/b&gt;\n,\n&lt;b&gt;Exposure&lt;/b&gt;\nand\n&lt;b&gt;Color&lt;/b&gt;\n).\n&lt;br /&gt;\n&lt;br /&gt;\nEach entry is compounded of two strings:\n&lt;br /&gt;\n&lt;ul&gt;\n    &lt;li&gt;\n        parameter path (e.g.\n        &lt;code&gt;prmanLightParams.intensity&lt;/code&gt;\n        )\n    &lt;/li&gt;\n    &lt;li&gt;\n        label\n        &lt;em&gt;(optional)&lt;/em&gt;\n    &lt;/li&gt;\n&lt;/ul&gt;\n&lt;br /&gt;\nIf the label is not provided, the parameter&amp;apos;s original label will be used.&apos;, &apos;isDynamicArray&apos;: &apos;1&apos;, &apos;name&apos;: &apos;parameters&apos;, &apos;tupleSize&apos;: &apos;2&apos;, &apos;widget&apos;: &apos;dynamicArray&apos;}"/>
+                  </group_parameter>
+                  <group_parameter name="hideHandle">
+                    <number_parameter name="enable" value="0"/>
+                    <number_parameter name="value" value="0"/>
+                    <number_parameter name="default" value="0"/>
+                    <string_parameter name="type" value="IntAttr"/>
+                    <string_parameter name="__hints" persistant="false" value="{&apos;default&apos;: &apos;0&apos;, &apos;help&apos;: &apos;Determines whether the center of interest arrow handles will be drawn for unselected lights.&apos;, &apos;int&apos;: &apos;True&apos;, &apos;name&apos;: &apos;hideHandle&apos;, &apos;widget&apos;: &apos;boolean&apos;}"/>
+                  </group_parameter>
+                </group_parameter>
+              </group_parameter>
+            </group_parameter>
+          </group_parameter>
         </group_parameter>
       </node>
     </node>
   </node>
 </katana>
-
