@@ -1,320 +1,318 @@
 """
-NAME: Toggle Material Mode (Edit/Override)
+NAME: Material Action Change (Edit/Override)
+ICON: icon.png
+KEYBOARD_SHORTCUT:
 SCOPE: Material
+
+Coverts Material Edits/Overrides to Overrides/Edits.
+
 """
 
-from Katana import Nodes3DAPI, NodegraphAPI, Utils, Widgets
+from Katana import Nodes3DAPI, NodegraphAPI, Utils, Widgets, KatanaFile
+
+# ------------------------------------------------------------------------------
+# Utility Helpers
+# ------------------------------------------------------------------------------
+
+def _attr_value(producer, attr_name):
+    try:
+        attr = producer.getAttribute(attr_name)
+        return attr.getValue() if attr else None
+    except Exception:
+        return None
+
+
+def _get_child(param, name):
+    return param.getChild(name) if param else None
+
+
+def _ensure_group(parent, name):
+    group = parent.getChild(name)
+    return group if group else parent.createChildGroup(name)
+
+
+# ------------------------------------------------------------------------------
+# CEL Utilities
+# ------------------------------------------------------------------------------
 
 def build_cel_for_material_override(node, material_path, start_path="/root/world/geo"):
-    results = []
-
     producer = Nodes3DAPI.GetGeometryProducer(node)
+    root = producer.getProducerByPath(start_path)
 
-    # Get the starting location producer
-    sgProducer = producer.getProducerByPath(start_path)
-    if not sgProducer:
+    if not root:
         print("Invalid start path:", start_path)
         return ""
 
-    def recurse(prod):
-        try:
-            attr = prod.getAttribute("materialAssign")
-            if attr:
-                assigned = attr.getValue()
-                if assigned == material_path:
-                    results.append(prod.getFullName())
-        except:
-            pass
+    results = []
+
+    def _recurse(prod):
+        assigned = _attr_value(prod, "materialAssign")
+        if assigned == material_path:
+            results.append(prod.getFullName())
 
         for child in prod.iterChildren():
-            recurse(child)
+            _recurse(child)
 
-    recurse(sgProducer)
+    _recurse(root)
 
-    # Build CEL string
-    if not results:
-        return ""
-
-    # Space-separated paths wrapped in parentheses (CEL union)
-    cel = "(" + " ".join(results) + ")"
-    return cel
+    return f"({' '.join(results)})" if results else ""
 
 
 def get_material_assigns_from_cel(node, cel, root_location="/root"):
-    """
-    Evaluate a CEL, collect matching scene graph locations,
-    then inspect each for materialAssign.
-
-    Args:
-        node: Katana node (typically view node)
-        cel: CEL string
-        root_location: root to evaluate CEL from
-
-    Returns:
-        List of unique materialAssign paths
-    """
-
-    results = []
-
-    # Evaluate CEL → list of matching locations
     collector = Widgets.CollectAndSelectInScenegraph(cel, root_location)
     matches = collector.collectAndSelect(select=False, node=node)
 
-    # Get geometry producer for attribute lookup
     producer = Nodes3DAPI.GetGeometryProducer(node)
+    results = []
 
     for path in matches:
-        try:
-            prod = producer.getProducerByPath(path)
-            if not prod:
-                continue
+        prod = producer.getProducerByPath(path)
+        if not prod:
+            continue
 
-            attr = prod.getAttribute("materialAssign")
-            if attr:
-                val = attr.getValue()
-                if val:
-                    results.append(val)
-        except:
-            pass
+        val = _attr_value(prod, "materialAssign")
+        if val:
+            results.append(val)
 
-    # Deduplicate + stable order
     return sorted(set(results))
 
 
-def convert_material_override_to_edit(node):
+# ------------------------------------------------------------------------------
+# Parameter Copy Helpers
+# ------------------------------------------------------------------------------
 
+def _is_enabled(param):
+    enable = _get_child(param, "enable")
+    return enable and enable.getValue(0) == 1
+
+
+def _get_value_and_type(param):
+    value = _get_child(param, "value")
+    ptype = _get_child(param, "type")
+    return value, ptype
+
+
+def _cleanup_param(param, names):
+    for name in names:
+        child = param.getChild(name)
+        if child:
+            param.deleteChild(child)
+
+
+# ------------------------------------------------------------------------------
+# Conversion: Override → Edit
+# ------------------------------------------------------------------------------
+
+def convert_material_override_to_edit(node):
     if node.getType() != "Material":
         raise RuntimeError("Node must be a Material node")
 
     params = node.getParameters()
+    action_param = _get_child(params, "action")
 
-    action_param = params.getChild("action")
     if not action_param or action_param.getValue(0) != "override materials":
         print("Skipping (not override):", node.getName())
         return
 
-    print("Converting:", node.getName(), "from from MaterialOverride to MaterialEdit")
+    print("Converting:", node.getName(), "MaterialOverride → MaterialEdit")
 
-    # --- SOURCE (EDIT STRUCTURE) ---
-    shaders_group = params.getChild("shaders")
-    if not shaders_group:
-        print("No shaders group found")
+    shaders = _get_child(params, "shaders")
+    edit_params = _get_child(shaders, "parameters")
+
+    overrides = _get_child(params, "overrides")
+    attrs = _get_child(overrides, "attrs")
+    override_params = _ensure_group(attrs, "materialOverride")
+
+    if not (shaders and edit_params and overrides and attrs):
+        print("Missing required parameter structure")
         return
 
-    shader_name_param = shaders_group.getChild("__lastValue")
-    if not shader_name_param:
-        print("No shader name found")
-        return
-
-    shader_name = shader_name_param.getValue(0)
-
-    edit_params = shaders_group.getChild("parameters")
-    if not edit_params:
-        print("No shader parameters found")
-        return
-
-    # --- DESTINATION (OVERRIDE STRUCTURE) ---
-    overrides_group = params.getChild("overrides")
-    if not overrides_group:
-        print("No overrides group found")
-        return
-
-    attrs = overrides_group.getChild('attrs')
-    if not attrs:
-        print("No override attrs found")
-        return
-
-    override_params = attrs.getChild("materialOverride")
-    if not override_params:
-        override_params = attrs.createChildGroup("materialOverride")
-
-    # --- COPY PARAMETERS ---
+    # Copy parameters
     for param in override_params.getChildren():
-        name = param.getName()
-        name = name.replace("parameters___", "")
-
-        enable = param.getChild("enable")
-
-        # enable
-        if not enable or enable.getValue(0) != 1:
+        if not _is_enabled(param):
             continue
 
-        value = param.getChild("value")
-        ptype = param.getChild("type")
+        value, ptype = _get_value_and_type(param)
+        if not (value and ptype):
+            continue
 
-        if not value or not ptype:
-                continue
-
-        new_type = ptype.getValue(0)
-
-        # --- CREATE GROUP ---
-        new_param = edit_params.getChild(name)
-        if not new_param:
-            new_param = edit_params.createChildGroup(name)
+        name = param.getName().replace("parameters___", "")
+        new_param = _get_child(edit_params, name) or edit_params.createChildGroup(name)
 
         new_param.parseXML(param.getXML())
+        _cleanup_param(new_param, ["isDynamicArray", "default", "__path", "__hints"])
 
-        # delete extra junk
-        for childname in ['isDynamicArray', 'default', '__path', '__hints']:
-            child = new_param.getChild(childname)
-            if child:
-                new_param.deleteChild(child)
-
-    # --- CLEANUP OVERRIDES ---
+    # Cleanup override params
     for child in override_params.getChildren():
         override_params.deleteChild(child)
 
-    # --- SWITCH MODE ---
+    # Switch mode
     action_param.setValue("edit material", 0)
 
-    # --- MODIFY NODE NAME ---
-    newname = node.getParameter('name').getValue(0).replace('MO_', 'ME_').replace('MaterialOverride_', 'MaterialEdit_')
-    newname = newname.replace('mo_', 'me_').replace('override_', 'edit_')
-    node.setName(newname)
-    node.getParameter('name').setValue(newname, 0)
+    _rename_node(node, to_edit=True)
 
-    # --- SET EDIT LOCATIONS ---
-    CEL = node.getParameter('overrides.CEL').getValue(0)
-    mtl_assigns = get_material_assigns_from_cel(node, CEL)
-    if len(mtl_assigns) > 0:
-        node.getParameter('edit.location').setValue(mtl_assigns[0], 0)
+    # Set edit locations
+    cel = node.getParameter('overrides.CEL').getValue(0)
+    mtl_assigns = get_material_assigns_from_cel(node, cel)
+
+    if not mtl_assigns:
+        print("Done:", node.getName())
+        return
+
+    node.getParameter('edit.location').setValue(mtl_assigns[0], 0)
 
     if len(mtl_assigns) > 1:
-        offset = 50
-        node_xml = NodegraphAPI.BuildNodesXmlIO([node])
-        parent = node.getParent()
-        pos = NodegraphAPI.GetNodePosition(node)
-        mtl_name = mtl_assigns[0].split('/')[-1]
-        oport = node.getOutputPortByIndex(0)
-        for i in range(1, len(mtl_assigns)):
-            copied_node = KatanaFile.Paste(node_xml, parent)[0]
-            copied_node.getParameter('edit.location').setValue(mtl_assigns[i], 0)
-            aux_name = mtl_assigns[i].split('/')[-1]
-            if mtl_name in newname:
-                node_name = newname.replace(mtl_name, aux_name)
-            else:
-                node_name = 'ME_' + aux_name
-
-            copied_node.getParameter('name').setValue(node_name, 0)
-            copied_node.setName(node_name)
-            copied_node.getInputPortByIndex(0).connect(oport)
-            oport = copied_node.getOutputPortByIndex(0)
-            NodegraphAPI.SetNodePosition(copied_node, (pos[0] + 200, pos[1] - ((i-1)*offset)))
+        _duplicate_nodes_for_materials(node, mtl_assigns)
 
     print("Done:", node.getName())
 
 
-def convert_material_edit_to_override(node):
+# ------------------------------------------------------------------------------
+# Conversion: Edit → Override
+# ------------------------------------------------------------------------------
 
+def convert_material_edit_to_override(node):
     if node.getType() != "Material":
         raise RuntimeError("Node must be a Material node")
 
     params = node.getParameters()
+    action_param = _get_child(params, "action")
 
-    action_param = params.getChild("action")
     if not action_param or action_param.getValue(0) != "edit material":
         print("Skipping (not edit):", node.getName())
         return
 
-    print("Converting:", node.getName(), "from from MaterialEdit to MaterialOverride")
+    print("Converting:", node.getName(), "MaterialEdit → MaterialOverride")
 
-    # --- SOURCE (EDIT STRUCTURE) ---
-    shaders_group = params.getChild("shaders")
-    if not shaders_group:
-        print("No shaders group found")
+    shaders = _get_child(params, "shaders")
+    edit_params = _get_child(shaders, "parameters")
+
+    overrides = _get_child(params, "overrides")
+    attrs = _get_child(overrides, "attrs")
+    override_params = _ensure_group(attrs, "materialOverride")
+
+    if not (shaders and edit_params and overrides and attrs):
+        print("Missing required parameter structure")
         return
 
-    shader_name_param = shaders_group.getChild("__lastValue")
-    if not shader_name_param:
-        print("No shader name found")
-        return
-
-    shader_name = shader_name_param.getValue(0)
-
-    edit_params = shaders_group.getChild("parameters")
-    if not edit_params:
-        print("No shader parameters found")
-        return
-
-    # --- DESTINATION (OVERRIDE STRUCTURE) ---
-    overrides_group = params.getChild("overrides")
-    if not overrides_group:
-        print("No overrides group found")
-        return
-
-    attrs = overrides_group.getChild('attrs')
-    if not attrs:
-        print("No override attrs found")
-        return
-
-    override_params = attrs.getChild("materialOverride")
-    if not override_params:
-        override_params = attrs.createChildGroup("materialOverride")
-
-    # --- COPY PARAMETERS ---
+    # Copy parameters
     for param in edit_params.getChildren():
-        name = param.getName()
-
-        enable = param.getChild("enable")
-
-        # enable
-        if not enable or enable.getValue(0) != 1:
+        if not _is_enabled(param):
             continue
 
-        value = param.getChild("value")
-        ptype = param.getChild("type")
+        value, ptype = _get_value_and_type(param)
+        if not (value and ptype):
+            continue
 
-        if not value or not ptype:
-                continue
-
-        new_type = ptype.getValue(0)
-
-        # --- CREATE GROUP ---
-        new_param = override_params.createChildGroup("parameters___" + name)
-
+        name = param.getName()
+        new_param = override_params.createChildGroup(f"parameters___{name}")
         new_param.parseXML(param.getXML())
 
-        new_path = new_param.createChildString("__path", "parameters." + name )
-        if value.getTupleSize() == 3 and new_type == 'FloatAttr':
-            # assume it is a color
-            new_hints = new_param.createChildString("__hints", '{"widget":"color", "panelWidget":"color"}')
+        new_param.createChildString("__path", f"parameters.{name}")
 
+        if value.getTupleSize() == 3 and ptype.getValue(0) == 'FloatAttr':
+            new_param.createChildString("__hints", '{"widget":"color","panelWidget":"color"}')
 
-        # --- CLEANUP - DISABLE EDIT PARAMETER ---
-        enable.setValue(0, 0)
+        # Disable edit param
+        param.getChild("enable").setValue(0, 0)
 
-    # --- SWITCH MODE ---
+    # Switch mode
     action_param.setValue("override materials", 0)
 
-    # --- MODIFY NODE NAME ---
-    newname = node.getParameter('name').getValue(0).replace('ME_', 'MO_').replace('MaterialEdit_', 'MaterialOverride_')
-    newname = newname.replace('me_', 'mo_').replace('edit_', 'override_')
-    node.setName(newname)
-    node.getParameter('name').setValue(newname, 0)
+    _rename_node(node, to_edit=False)
 
-    # --- SET OVERRIDES CEL ---
+    # Build CEL
     material_path = node.getParameter('edit.location').getValue(0)
-    CEL = build_cel_for_material_override(node, material_path)
-    if len(CEL) > 0:
-        node.getParameter('overrides.CEL').setValue(CEL, 0)
+    cel = build_cel_for_material_override(node, material_path)
+
+    if cel:
+        node.getParameter('overrides.CEL').setValue(cel, 0)
 
     print("Done:", node.getName())
 
 
+# ------------------------------------------------------------------------------
+# Node Utilities
+# ------------------------------------------------------------------------------
+
+def _rename_node(node, to_edit=True):
+    name = node.getParameter('name').getValue(0)
+
+    if to_edit:
+        newname = (name.replace('MO_', 'ME_')
+                        .replace('MaterialOverride_', 'MaterialEdit_')
+                        .replace('mo_', 'me_')
+                        .replace('override_', 'edit_'))
+    else:
+        newname = (name.replace('ME_', 'MO_')
+                        .replace('MaterialEdit_', 'MaterialOverride_')
+                        .replace('me_', 'mo_')
+                        .replace('edit_', 'override_'))
+
+    node.setName(newname)
+    node.getParameter('name').setValue(newname, 0)
+
+
+def _duplicate_nodes_for_materials(node, material_paths):
+    offset = 50
+    node_xml = NodegraphAPI.BuildNodesXmlIO([node])
+    parent = node.getParent()
+    pos = NodegraphAPI.GetNodePosition(node)
+
+    base_name = node.getName()
+    first_name = material_paths[0].split('/')[-1]
+
+    oport = node.getOutputPortByIndex(0)
+
+    for i, path in enumerate(material_paths[1:], start=1):
+        copied = KatanaFile.Paste(node_xml, parent)[0]
+        copied.getParameter('edit.location').setValue(path, 0)
+
+        mat_name = path.split('/')[-1]
+
+        if first_name in base_name:
+            newname = base_name.replace(first_name, mat_name)
+        else:
+            newname = f"ME_{mat_name}"
+
+        copied.setName(newname)
+        copied.getParameter('name').setValue(newname, 0)
+
+        copied.getInputPortByIndex(0).connect(oport)
+        oport = copied.getOutputPortByIndex(0)
+
+        NodegraphAPI.SetNodePosition(
+            copied,
+            (pos[0] + 200, pos[1] - ((i - 1) * offset))
+        )
+
+
+# ------------------------------------------------------------------------------
+# Entry Point
+# ------------------------------------------------------------------------------
+
 def convert_selected_materials():
     for node in NodegraphAPI.GetAllEditedNodes():
-        if node.getType() == "Material":
-            params = node.getParameters()
-            action_param = params.getChild("action")
+        if node.getType() != "Material":
+            continue
 
-            if action_param and action_param.getValue(0) == "edit material":
-                convert_material_edit_to_override(node)
-            elif action_param and action_param.getValue(0) == "override materials":
-                convert_material_override_to_edit(node)
+        action = _get_child(node.getParameters(), "action")
+        if not action:
+            continue
+
+        value = action.getValue(0)
+
+        if value == "edit material":
+            convert_material_edit_to_override(node)
+        elif value == "override materials":
+            convert_material_override_to_edit(node)
 
 
+# ------------------------------------------------------------------------------
 # Run
-Utils.UndoStack.OpenGroup("Toggle Material Mode")
+# ------------------------------------------------------------------------------
+
+Utils.UndoStack.OpenGroup("Material Action Change (Edit/Override)")
 try:
     convert_selected_materials()
 finally:
