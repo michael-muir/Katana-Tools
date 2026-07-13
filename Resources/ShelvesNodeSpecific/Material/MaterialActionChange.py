@@ -35,7 +35,7 @@ def _ensure_group(parent, name):
 # CEL Utilities
 # ------------------------------------------------------------------------------
 
-def build_cel_for_material_override(node, material_path, start_path="/root/world/geo"):
+def build_cel_for_material_override(node, location_path, start_path="/root/world/geo"):
     producer = Nodes3DAPI.GetGeometryProducer(node)
     root = producer.getProducerByPath(start_path)
 
@@ -45,15 +45,18 @@ def build_cel_for_material_override(node, material_path, start_path="/root/world
 
     results = []
 
-    def _recurse(prod):
-        assigned = _attr_value(prod, "materialAssign")
-        if assigned == material_path:
-            results.append(prod.getFullName())
+    if producer.getProducerByPath(location_path).getType() != 'material':
+        results = [location_path]
+    else:
+        def _recurse(prod):
+            assigned = _attr_value(prod, "materialAssign")
+            if assigned == location_path:
+                results.append(prod.getFullName())
 
-        for child in prod.iterChildren():
-            _recurse(child)
+            for child in prod.iterChildren():
+                _recurse(child)
 
-    _recurse(root)
+        _recurse(root)
 
     return f"({' '.join(results)})" if results else ""
 
@@ -222,8 +225,8 @@ def convert_material_edit_to_override(node):
     _rename_node(node, to_edit=False)
 
     # Build CEL
-    material_path = node.getParameter('edit.location').getValue(0)
-    cel = build_cel_for_material_override(node, material_path)
+    location_path = node.getParameter('edit.location').getValue(0)
+    cel = build_cel_for_material_override(node, location_path)
 
     if cel:
         node.getParameter('overrides.CEL').setValue(cel, 0)
