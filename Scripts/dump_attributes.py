@@ -1,5 +1,10 @@
-# Dumps attributes from one or more Scene Graph Selections
-# In the Foundry's Katana from the viewed node
+"""
+NAME: Dump Local/Global Attributes
+ICON: Icons/file32.png
+
+Dumps the local and global attributes for the selected scene graph locations.
+"""
+
 import os
 import tempfile
 
