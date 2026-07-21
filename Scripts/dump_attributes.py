@@ -1,3 +1,5 @@
+# Dumps attributes from one or more Scene Graph Selections
+# In the Foundry's Katana from the viewed node
 import os
 import tempfile
 
@@ -47,6 +49,33 @@ def dump_group(group, fp, prefix=""):
             ))
 
 
+def dump_attribute_set(title, getter, names, fp):
+
+    fp.write(title + "\n")
+    fp.write("=" * len(title) + "\n\n")
+
+    for name in names:
+
+        attr = getter(name)
+
+        if attr is None:
+            continue
+
+        if isinstance(attr, FnAttribute.GroupAttribute):
+
+            fp.write("{} <Group>\n".format(name))
+            dump_group(attr, fp, name)
+
+        else:
+
+            fp.write("{} = {}\n".format(
+                name,
+                attribute_to_string(attr)
+            ))
+
+    fp.write("\n\n")
+
+
 def dump_root_attributes(path="/root"):
 
     viewed = NodegraphAPI.GetViewNode()
@@ -55,35 +84,43 @@ def dump_root_attributes(path="/root"):
 
     outfile = os.path.join(
         tempfile.gettempdir(),
-        path[1:].replace('/', '-') + "_" + "katana_attributes.txt"
+        path[1:].replace('/', '-') + "_katana_attributes.txt"
     )
 
     with open(outfile, "w") as fp:
 
         fp.write("Viewed Node : {}\n".format(viewed.getName()))
-        fp.write("Location    : /\n")
+        fp.write("Location    : {}\n".format(path))
         fp.write("=" * 80 + "\n\n")
 
-        #
-        # Attribute order is preserved by getAttributeNames()
-        #
-        for name in root.getAttributeNames():
+        names = root.getAttributeNames()
 
-            attr = root.getAttribute(name)
+        # Flattened attributes
+        dump_attribute_set(
+            "FLATTENED ATTRIBUTES",
+            root.getAttribute,
+            names,
+            fp
+        )
 
-            if isinstance(attr, FnAttribute.GroupAttribute):
-
-                fp.write("{} <Group>\n".format(name))
-                dump_group(attr, fp, name)
-
-            else:
-
-                fp.write("{} = {}\n".format(
-                    name,
-                    attribute_to_string(attr)
-                ))
+        # Local attributes
+        dump_attribute_set(
+            "LOCAL ATTRIBUTES",
+            root.getDelimitedLocalAttribute,
+            names,
+            fp
+        )
+        
+        # Global attributes
+        dump_attribute_set(
+            "GLOBAL ATTRIBUTES",
+            root.getDelimitedGlobalAttribute,
+            names,
+            fp
+        )
 
     print("Wrote:", outfile)
+
 
 ## MAIN SCRIPT ###
 
